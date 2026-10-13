@@ -20,8 +20,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install requests
-
+        pip install requests cloudscraper
     - name: Run sync script
       run: python scripts/sync_catalog.py
 
