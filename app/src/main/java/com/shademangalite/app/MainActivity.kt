@@ -34,24 +34,6 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.abs
 
-data class Serie(
-    val id: String,
-    val publicId: String,
-    val titulo: String,
-    val autor: String,
-    val portadaUrl: String,
-    val capitulos: Int,
-    val genero: String
-)
-
-data class Capitulo(
-    val id: String,
-    val publicId: String,
-    val numero: String,
-    val titulo: String,
-    val totalPaginas: Int
-)
-
 class MainActivity : Activity() {
 
     private val apiBase = "https://shademanga.com"
