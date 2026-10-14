@@ -304,7 +304,7 @@ class MainActivity : Activity() {
             setHintTextColor(secundario)
             setTextColor(texto)
             textSize = 16f
-            singleLine = true
+            isSingleLine = true
             setPadding(14, 12, 14, 12)
             background = crearFondo(tarjeta)
         }
