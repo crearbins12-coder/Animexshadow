@@ -1192,54 +1192,33 @@ onHistorial = { mostrarPantallaEspecial(false) }
     }
 
     private fun crearTarjetaCuadricula(serie: Serie): View {
-        val caja = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.TOP
-            setPadding(dp(5), dp(5), dp(5), dp(7))
-            background = crearFondo(tarjeta, 10)
-            isClickable = true
-            isFocusable = true
+return MangaCard(
+context = this,
+serie = serie,
+colorTarjeta = tarjeta,
+colorTextoSecundario = textoSecundario,
+crearFondo = { color, radio ->
+crearFondo(color, radio)
+},
+cargarPortada = { imagen, manga, alto, radio ->
+cargarPortada(imagen, manga, alto, radio)
+},
+crearTexto = { contenido, tamano, negrita ->
+texto(contenido, tamano, negrita)
+},
+dp = { valor ->
+dp(valor)
+},
+alTocar = {
+if (mostrandoTodos && filtroActual.isBlank()) {
+posicionCatalogoGuardada = scrollPrincipal.scrollY
+restaurarPosicionCatalogo = true
+}
 
-            setOnClickListener {
-                if (mostrandoTodos && filtroActual.isBlank()) {
-                    posicionCatalogoGuardada = scrollPrincipal.scrollY
-                    restaurarPosicionCatalogo = true
-                }
-                mostrarSerie(serie)
-            }
+            mostrarSerie(serie)
         }
-
-        val portada = ImageView(this).apply {
-            scaleType = ImageView.ScaleType.CENTER_CROP
-            contentDescription = "Portada de ${serie.titulo}"
-        }
-
-        caja.addView(
-            portada,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(145)
-            )
-        )
-
-        cargarPortada(portada, serie, 145, 8)
-
-        caja.addView(
-            texto(serie.titulo, 12f, true).apply {
-                maxLines = 2
-                setPadding(dp(2), dp(5), dp(2), 0)
-            }
-        )
-
-        caja.addView(
-            texto("${serie.capitulos} capítulos", 10f, false).apply {
-                setTextColor(textoSecundario)
-                setPadding(dp(2), dp(3), dp(2), 0)
-            }
-        )
-
-        return caja
-    }
+    )
+}
 
     // =====================================================
     // DETALLE Y CAPÍTULOS
