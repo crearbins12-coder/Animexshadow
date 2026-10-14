@@ -8,6 +8,9 @@ import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
 import android.widget.*
+import org.json.JSONArray
+import java.net.HttpURLConnection
+import java.net.URL
 
 class MainActivity : Activity() {
 
@@ -20,53 +23,27 @@ class MainActivity : Activity() {
     private lateinit var contenido: LinearLayout
     private lateinit var buscador: EditText
 
-    private var pantalla = "inicio"
     private var serieActual = 0
     private var paginaActual = 1
+    private var cargando = true
+    private var errorCarga: String? = null
 
     data class Serie(
+        val id: Int,
+        val publicId: String,
         val titulo: String,
-        val descripcion: String,
+        val autor: String,
+        val portadaUrl: String?,
         val capitulos: Int,
         val genero: String
     )
 
-    private val series = listOf(
-        Serie(
-            "Aventura Lunar",
-            "Un joven descubre un mundo oculto más allá de las estrellas.",
-            12,
-            "Aventura"
-        ),
-        Serie(
-            "El Reino Perdido",
-            "Una historia de misterio, magia y reinos olvidados.",
-            24,
-            "Fantasía"
-        ),
-        Serie(
-            "Sombras del Futuro",
-            "La humanidad intenta sobrevivir en una ciudad desconocida.",
-            18,
-            "Ciencia ficción"
-        ),
-        Serie(
-            "Diario de un Héroe",
-            "Un estudiante comienza una aventura que cambiará su vida.",
-            32,
-            "Comedia"
-        ),
-        Serie(
-            "La Última Estrella",
-            "Una viajera busca respuestas sobre su pasado.",
-            15,
-            "Drama"
-        )
-    )
+    private val series = mutableListOf<Serie>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         mostrarInicio()
+        cargarCatalogo()
     }
 
     private fun crearFondo(
@@ -109,25 +86,17 @@ class MainActivity : Activity() {
             background = crearFondo(tarjeta)
             isClickable = true
             isFocusable = true
-
-            setOnClickListener {
-                accion()
-            }
+            setOnClickListener { accion() }
         }
     }
 
     private fun espacio(altura: Int = 12): View {
         return View(this).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                1,
-                altura
-            )
+            layoutParams = LinearLayout.LayoutParams(1, altura)
         }
     }
 
     private fun prepararPantalla(titulo: String) {
-        pantalla = titulo.lowercase()
-
         val raiz = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(fondo)
@@ -139,23 +108,14 @@ class MainActivity : Activity() {
             setPadding(16, 12, 16, 12)
         }
 
-        val marca = texto(
-            "ShadeManga",
-            23f,
-            acento,
-            true
-        )
-
         encabezado.addView(
-            marca,
+            texto("ShadeManga", 23f, acento, true),
             LinearLayout.LayoutParams(0, -2, 1f)
         )
 
-        encabezado.addView(
-            boton("Inicio") {
-                mostrarInicio()
-            }
-        )
+        encabezado.addView(boton("Inicio") {
+            mostrarInicio()
+        })
 
         raiz.addView(encabezado)
 
@@ -180,27 +140,119 @@ class MainActivity : Activity() {
             setBackgroundColor(tarjeta)
         }
 
-        val inicio = boton("Inicio") {
-            mostrarInicio()
-        }
-
-        val buscar = boton("Buscar") {
-            mostrarBusqueda()
-        }
-
         navegacion.addView(
-            inicio,
+            boton("Inicio") { mostrarInicio() },
             LinearLayout.LayoutParams(0, -2, 1f)
         )
 
         navegacion.addView(
-            buscar,
+            boton("Buscar") { mostrarBusqueda() },
             LinearLayout.LayoutParams(0, -2, 1f)
         )
 
         raiz.addView(navegacion)
-
         setContentView(raiz)
+    }
+
+    private fun cargarCatalogo() {
+        cargando = true
+        errorCarga = null
+
+        Thread {
+            var conexion: HttpURLConnection? = null
+
+            try {
+                val url = URL(
+                    "https://shademanga.com/api/series-locales?pageSize=30"
+                )
+
+                conexion = url.openConnection() as HttpURLConnection
+                conexion.requestMethod = "GET"
+                conexion.connectTimeout = 15000
+                conexion.readTimeout = 15000
+                conexion.setRequestProperty(
+                    "Accept",
+                    "application/json"
+                )
+                conexion.setRequestProperty(
+                    "User-Agent",
+                    "ShadeMangaLite/1.0"
+                )
+
+                val codigo = conexion.responseCode
+
+                if (codigo !in 200..299) {
+                    throw Exception("El servidor respondió HTTP $codigo")
+                }
+
+                val respuesta = conexion.inputStream
+                    .bufferedReader(Charsets.UTF_8)
+                    .use { it.readText() }
+
+                val json = JSONArray(respuesta)
+                val resultados = mutableListOf<Serie>()
+
+                for (i in 0 until json.length()) {
+                    val item = json.getJSONObject(i)
+
+                    // Excluir contenido marcado para adultos.
+                    if (item.optBoolean("esMayorDeEdad", false)) {
+                        continue
+                    }
+
+                    val titulo = item.optString("titulo", "").trim()
+
+                    if (titulo.isEmpty()) {
+                        continue
+                    }
+
+                    val id = item.optInt("id", 0)
+                    val publicId = item.optString("publicId", "")
+                    val autor = item.optString("autor", "")
+                        .takeUnless { it == "null" }
+                        .orEmpty()
+
+                    val portada = item.optString("portadaUrl", "")
+                        .takeUnless { it.isBlank() || it == "null" }
+
+                    val genero = item.optString("generos", "")
+                        .takeUnless { it.isBlank() || it == "null" }
+                        ?: "Sin género"
+
+                    val capitulos = item.optInt("totalCapitulos", 0)
+
+                    resultados.add(
+                        Serie(
+                            id = id,
+                            publicId = publicId,
+                            titulo = titulo,
+                            autor = autor,
+                            portadaUrl = portada,
+                            capitulos = capitulos,
+                            genero = genero
+                        )
+                    )
+                }
+
+                runOnUiThread {
+                    series.clear()
+                    series.addAll(resultados)
+                    cargando = false
+                    errorCarga = null
+                    mostrarInicio()
+                }
+
+            } catch (e: Exception) {
+                runOnUiThread {
+                    cargando = false
+                    errorCarga = e.message
+                        ?: "No se pudo cargar el catálogo."
+                    mostrarInicio()
+                }
+            } finally {
+                conexion?.disconnect()
+            }
+        }.start()
     }
 
     private fun mostrarInicio() {
@@ -219,7 +271,7 @@ class MainActivity : Activity() {
 
         contenido.addView(
             texto(
-                "Versión de prueba · Catálogo local",
+                "Catálogo de ShadeManga",
                 13f,
                 secundario
             )
@@ -228,29 +280,87 @@ class MainActivity : Activity() {
         contenido.addView(espacio(20))
 
         contenido.addView(
-            texto(
-                "Explorar series",
-                20f,
-                texto,
-                true
-            )
+            texto("Explorar mangas", 20f, texto, true)
         )
 
         contenido.addView(espacio())
 
-        for (i in series.indices) {
-            agregarTarjetaSerie(i)
+        when {
+            cargando -> {
+                contenido.addView(
+                    texto("Cargando catálogo...", 16f, secundario)
+                )
+
+                val progreso = ProgressBar(this)
+
+                contenido.addView(
+                    progreso,
+                    LinearLayout.LayoutParams(-2, -2).apply {
+                        gravity = Gravity.CENTER
+                    }
+                )
+            }
+
+            errorCarga != null -> {
+                contenido.addView(
+                    texto(
+                        "No se pudo cargar el catálogo.\n$errorCarga",
+                        15f,
+                        secundario
+                    )
+                )
+
+                contenido.addView(espacio())
+
+                contenido.addView(
+                    boton("Reintentar") {
+                        cargarCatalogo()
+                    }
+                )
+            }
+
+            series.isEmpty() -> {
+                contenido.addView(
+                    texto(
+                        "No se encontraron mangas disponibles.",
+                        15f,
+                        secundario
+                    )
+                )
+
+                contenido.addView(espacio())
+
+                contenido.addView(
+                    boton("Volver a cargar") {
+                        cargarCatalogo()
+                    }
+                )
+            }
+
+            else -> {
+                contenido.addView(
+                    texto(
+                        "${series.size} mangas cargados · Contenido para adultos excluido",
+                        12f,
+                        secundario
+                    )
+                )
+
+                contenido.addView(espacio())
+
+                for (i in series.indices) {
+                    agregarTarjetaSerie(i)
+                }
+
+                contenido.addView(espacio(12))
+
+                contenido.addView(
+                    boton("Actualizar catálogo") {
+                        cargarCatalogo()
+                    }
+                )
+            }
         }
-
-        contenido.addView(espacio(12))
-
-        contenido.addView(
-            texto(
-                "Esta versión utiliza títulos de demostración.",
-                12f,
-                secundario
-            )
-        )
     }
 
     private fun agregarTarjetaSerie(indice: Int) {
@@ -273,10 +383,7 @@ class MainActivity : Activity() {
             background = crearFondo(acento, 14f)
         }
 
-        caja.addView(
-            portada,
-            LinearLayout.LayoutParams(76, 96)
-        )
+        caja.addView(portada, LinearLayout.LayoutParams(76, 96))
 
         val detalles = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -284,33 +391,34 @@ class MainActivity : Activity() {
         }
 
         detalles.addView(
-            texto(
-                serie.titulo,
-                17f,
-                texto,
-                true
-            )
+            texto(serie.titulo, 17f, texto, true)
         )
 
         detalles.addView(espacio(5))
 
         detalles.addView(
-            texto(
-                serie.genero,
-                12f,
-                acento
-            )
+            texto(serie.genero, 12f, acento)
         )
 
         detalles.addView(espacio(5))
 
+        val cantidad = if (serie.capitulos > 0) {
+            "${serie.capitulos} capítulos"
+        } else {
+            "Capítulos no disponibles"
+        }
+
         detalles.addView(
-            texto(
-                "${serie.capitulos} capítulos · Demo",
-                12f,
-                secundario
-            )
+            texto(cantidad, 12f, secundario)
         )
+
+        if (serie.autor.isNotBlank()) {
+            detalles.addView(espacio(4))
+
+            detalles.addView(
+                texto("Autor: ${serie.autor}", 12f, secundario)
+            )
+        }
 
         caja.addView(
             detalles,
@@ -333,12 +441,7 @@ class MainActivity : Activity() {
         prepararPantalla("buscar")
 
         contenido.addView(
-            texto(
-                "Buscar series",
-                24f,
-                texto,
-                true
-            )
+            texto("Buscar mangas", 24f, texto, true)
         )
 
         contenido.addView(espacio())
@@ -373,13 +476,18 @@ class MainActivity : Activity() {
                 val serie = series[i]
 
                 serie.titulo.contains(consulta, true) ||
-                    serie.genero.contains(consulta, true)
+                    serie.genero.contains(consulta, true) ||
+                    serie.autor.contains(consulta, true)
             }
 
             if (coincidencias.isEmpty()) {
                 resultados.addView(
                     texto(
-                        "No se encontraron series.",
+                        if (cargando) {
+                            "Esperando el catálogo..."
+                        } else {
+                            "No se encontraron mangas."
+                        },
                         15f,
                         secundario
                     )
@@ -404,7 +512,6 @@ class MainActivity : Activity() {
 
         buscador.addTextChangedListener(
             object : android.text.TextWatcher {
-
                 override fun beforeTextChanged(
                     s: CharSequence?,
                     start: Int,
@@ -418,9 +525,7 @@ class MainActivity : Activity() {
                     before: Int,
                     count: Int
                 ) {
-                    actualizarResultados(
-                        s?.toString().orEmpty()
-                    )
+                    actualizarResultados(s?.toString().orEmpty())
                 }
 
                 override fun afterTextChanged(
@@ -433,18 +538,15 @@ class MainActivity : Activity() {
     }
 
     private fun mostrarSerie(indice: Int) {
-        serieActual = indice
+        if (indice !in series.indices) return
 
+        serieActual = indice
         val serie = series[indice]
 
         prepararPantalla("serie")
 
         contenido.addView(
-            texto(
-                "‹ Volver al catálogo",
-                14f,
-                acento
-            ).apply {
+            texto("‹ Volver al catálogo", 14f, acento).apply {
                 setOnClickListener {
                     mostrarInicio()
                 }
@@ -467,167 +569,57 @@ class MainActivity : Activity() {
         contenido.addView(espacio(18))
 
         contenido.addView(
-            texto(
-                serie.titulo,
-                27f,
-                texto,
-                true
-            )
+            texto(serie.titulo, 27f, texto, true)
         )
 
         contenido.addView(espacio(6))
 
         contenido.addView(
-            texto(
-                serie.genero,
-                14f,
-                acento
-            )
+            texto(serie.genero, 14f, acento)
         )
 
-        contenido.addView(espacio(16))
+        if (serie.autor.isNotBlank()) {
+            contenido.addView(espacio(8))
 
-        contenido.addView(
-            texto(
-                serie.descripcion,
-                16f,
-                secundario
-            )
-        )
-
-        contenido.addView(espacio(20))
-
-        contenido.addView(
-            texto(
-                "Capítulos",
-                21f,
-                texto,
-                true
-            )
-        )
-
-        contenido.addView(espacio())
-
-        for (capitulo in 1..serie.capitulos) {
             contenido.addView(
-                boton("Capítulo $capitulo     ›") {
-                    mostrarLector(capitulo)
-                },
-                LinearLayout.LayoutParams(-1, -2).apply {
-                    bottomMargin = 8
-                }
+                texto("Autor: ${serie.autor}", 14f, secundario)
             )
         }
-    }
 
-    private fun mostrarLector(capitulo: Int) {
-        paginaActual = 1
-
-        prepararPantalla("lector")
+        contenido.addView(espacio(20))
 
         contenido.addView(
-            texto(
-                "‹ ${series[serieActual].titulo}",
-                16f,
-                acento
-            ).apply {
-                setOnClickListener {
-                    mostrarSerie(serieActual)
-                }
-            }
+            texto("Capítulos", 21f, texto, true)
         )
+
+        contenido.addView(espacio())
+
+        if (serie.capitulos <= 0) {
+            contenido.addView(
+                texto(
+                    "La API no informa capítulos disponibles para este manga.",
+                    14f,
+                    secundario
+                )
+            )
+        } else {
+            contenido.addView(
+                texto(
+                    "La API informa ${serie.capitulos} capítulos. Todavía debemos conectar el endpoint de capítulos.",
+                    14f,
+                    secundario
+                )
+            )
+        }
 
         contenido.addView(espacio(16))
 
         contenido.addView(
             texto(
-                "Capítulo $capitulo",
-                23f,
-                texto,
-                true
-            )
-        )
-
-        contenido.addView(espacio())
-
-        val aviso = texto(
-            "",
-            15f,
-            secundario
-        ).apply {
-            gravity = Gravity.CENTER
-        }
-
-        contenido.addView(
-            aviso,
-            LinearLayout.LayoutParams(-1, 160)
-        )
-
-        val indicador = texto(
-            "",
-            14f,
-            secundario
-        ).apply {
-            gravity = Gravity.CENTER
-        }
-
-        contenido.addView(indicador)
-
-        contenido.addView(espacio(18))
-
-        val controles = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-        }
-
-        // Creamos los botones antes de asignar sus acciones.
-        val anterior = boton("‹ Anterior") {}
-        val siguiente = boton("Siguiente ›") {}
-
-        controles.addView(
-            anterior,
-            LinearLayout.LayoutParams(0, -2, 1f)
-        )
-
-        controles.addView(
-            siguiente,
-            LinearLayout.LayoutParams(0, -2, 1f)
-        )
-
-        contenido.addView(controles)
-
-        contenido.addView(espacio(20))
-
-        contenido.addView(
-            texto(
-                "Lector de demostración: todavía no carga páginas reales.",
-                13f,
+                "Identificador: ${serie.publicId}",
+                12f,
                 secundario
             )
         )
-
-        // Esta función se declara antes de utilizarla.
-        fun actualizar() {
-            aviso.text = "Página de prueba\n\n漫"
-            aviso.textSize = 36f
-            indicador.text = "Página $paginaActual"
-
-            anterior.alpha =
-                if (paginaActual == 1) 0.4f else 1f
-        }
-
-        // Ahora los botones pueden llamar a actualizar().
-        anterior.setOnClickListener {
-            if (paginaActual > 1) {
-                paginaActual--
-                actualizar()
-            }
-        }
-
-        siguiente.setOnClickListener {
-            paginaActual++
-            actualizar()
-        }
-
-        actualizar()
     }
 }
