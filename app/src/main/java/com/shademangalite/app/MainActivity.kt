@@ -173,14 +173,7 @@ class MainActivity : Activity() {
                     "/api/series-locales?pageSize=30"
                 )
 
-                val json = JSONObject(respuesta)
-                val listaJson = obtenerArray(
-                    json,
-                    "data",
-                    "series",
-                    "resultados",
-                    "items"
-                )
+                val listaJson = JSONArray(respuesta)
 
                 val nuevasSeries = mutableListOf<Serie>()
 
