@@ -169,29 +169,37 @@ private fun crearEncabezado() {
 // =========================================================
 
 private fun cargarCatalogo() {
-    mostrarPantallaCarga("Cargando catálogo...")
+mostrarPantallaCarga("Cargando catálogo de mangas...")
 
     Thread {
         try {
-            val respuesta = consultarApi(
-                "/api/series-locales?pageSize=30"
-            )
+            val mangasPorId = linkedMapOf<String, Serie>()
 
-            val array = JSONArray(respuesta)
-            val resultado = mutableListOf<Serie>()
+            // Consultamos varias páginas de la API.
+            // La carga se realiza en segundo plano.
+            for (pagina in 1..30) {
+                val ruta =
+                    "/api/series-locales?pageSize=100&page=$pagina"
 
-            for (i in 0 until array.length()) {
-                val objeto = array.optJSONObject(i) ?: continue
+                val respuesta = consultarApi(ruta)
+                val array = JSONArray(respuesta)
 
-                if (objeto.optBoolean("esMayorDeEdad", false)) {
-                    continue
-                }
+                var mangasNuevos = 0
 
-                val id = objeto.optString("id", "")
-                if (id.isBlank() || id == "null") continue
+                for (i in 0 until array.length()) {
+                    val objeto = array.optJSONObject(i) ?: continue
 
-                resultado.add(
-                    Serie(
+                    if (objeto.optBoolean("esMayorDeEdad", false)) {
+                        continue
+                    }
+
+                    val id = objeto.optString("id", "")
+                    if (id.isBlank() || id == "null") continue
+
+                    // Evitamos duplicados.
+                    if (mangasPorId.containsKey(id)) continue
+
+                    mangasPorId[id] = Serie(
                         id = id,
                         publicId = objeto.optString("publicId", ""),
                         titulo = objeto.optString(
@@ -201,11 +209,15 @@ private fun cargarCatalogo() {
                         autor = objeto.optString(
                             "autor",
                             "Autor desconocido"
-                        ),
+                        ).let {
+                            if (it == "null") "Autor desconocido" else it
+                        },
                         portadaUrl = objeto.optString(
                             "portadaUrl",
                             ""
-                        ),
+                        ).let {
+                            if (it == "null") "" else it
+                        },
                         capitulos = objeto.optInt(
                             "totalCapitulos",
                             0
@@ -214,21 +226,35 @@ private fun cargarCatalogo() {
                             objeto.opt("generos")
                         )
                     )
-                )
+
+                    mangasNuevos++
+                }
+
+                // Si una página no aporta mangas nuevos,
+                // dejamos de consultar para evitar repetir resultados.
+                if (mangasNuevos == 0) break
+
+                // Si la API devuelve menos de 100 elementos,
+                // probablemente llegamos al final del catálogo.
+                if (array.length() < 100) break
             }
 
             runOnUiThread {
-                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (isFinishing || isDestroyed) {
+                    return@runOnUiThread
+                }
 
-                catalogo = resultado
+                catalogo = mangasPorId.values.toMutableList()
                 mostrarCatalogoFiltrado()
             }
         } catch (e: Exception) {
             runOnUiThread {
-                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (isFinishing || isDestroyed) {
+                    return@runOnUiThread
+                }
 
                 mostrarError(
-                    "No se pudo cargar el catálogo.\n\n" +
+                    "No se pudo cargar el catálogo completo.\n\n" +
                         "${e.javaClass.simpleName}: " +
                         (e.message ?: "Error desconocido")
                 )
