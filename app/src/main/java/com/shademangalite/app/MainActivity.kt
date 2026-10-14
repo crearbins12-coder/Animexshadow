@@ -376,82 +376,22 @@ setBackgroundColor(Color.rgb(25, 20, 39))
             )
         )
 
-        raiz.addView(crearNavegacionInferior())
-setContentView(raiz)
-    }
-    private fun crearNavegacionInferior(): View {
-    val barra = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER
-        setBackgroundColor(Color.rgb(25, 20, 39))
-        setPadding(dp(6), dp(8), dp(6), dp(8))
-        elevation = dp(8).toFloat()
-    }
+        raiz.addView(
+NavigationBar(
+context = this,
+acento = acento,
+textoSecundario = textoSecundario,
+mostrandoTodos = mostrandoTodos,
+mostrandoFavoritos = mostrandoFavoritos,
+mostrandoHistorial = mostrandoHistorial,
+onInicio = { mostrarInicio() },
+onMangas = { abrirTodosLosMangas() },
+onFavoritos = { mostrarPantallaEspecial(true) },
+onHistorial = { mostrarPantallaEspecial(false) }
+)
+)
 
-    fun agregarOpcion(
-        icono: String,
-        titulo: String,
-        seleccionada: Boolean,
-        accion: () -> Unit
-    ) {
-        val color = if (seleccionada) acento else textoSecundario
-
-        val opcion = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            isClickable = true
-            isFocusable = true
-            setPadding(dp(2), dp(4), dp(2), dp(4))
-            setOnClickListener { accion() }
-        }
-
-        opcion.addView(
-            texto(icono, 23f, true).apply {
-                gravity = Gravity.CENTER
-                setTextColor(color)
-            }
-        )
-
-        opcion.addView(
-            texto(titulo, 11f, true).apply {
-                gravity = Gravity.CENTER
-                setTextColor(color)
-            }
-        )
-
-        barra.addView(
-            opcion,
-            LinearLayout.LayoutParams(
-                0,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                1f
-            )
-        )
-    }
-
-    agregarOpcion(
-        "⌂",
-        "Inicio",
-        !mostrandoTodos &&
-            !mostrandoFavoritos &&
-            !mostrandoHistorial
-    ) {
-        mostrarInicio()
-    }
-
-    agregarOpcion("▦", "Mangas", mostrandoTodos) {
-        abrirTodosLosMangas()
-    }
-
-    agregarOpcion("♡", "Favoritos", mostrandoFavoritos) {
-        mostrarPantallaEspecial(true)
-    }
-
-    agregarOpcion("◷", "Historial", mostrandoHistorial) {
-        mostrarPantallaEspecial(false)
-    }
-
-    return barra
+    setContentView(raiz)
 }
 
     // =====================================================
