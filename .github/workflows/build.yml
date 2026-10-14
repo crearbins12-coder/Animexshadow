@@ -1,6 +1,6 @@
-name: Build ShadeManga Lite APK
+-name: Build ShadeManga Lite APK
 
-on:
+'on':
 workflow_dispatch:
 push:
 branches:
