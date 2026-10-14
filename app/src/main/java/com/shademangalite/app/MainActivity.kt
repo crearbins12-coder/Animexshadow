@@ -82,7 +82,8 @@ class MainActivity : Activity() {
             setHintTextColor(gris)
             setTextColor(blanco)
             textSize = 15f
-            setSingleLine = (true)
+            maxLines = 1
+            setHorizontallyScrolling(true)
             setPadding(dp(16), 0, dp(16), 0)
             background = crearFondo(tarjeta, 14)
         }
@@ -105,7 +106,6 @@ class MainActivity : Activity() {
             setPadding(dp(14), dp(4), dp(14), dp(24))
         }
 
-        // Sin ScrollView.LayoutParams: evitamos el error de compilación.
         desplazamiento.addView(contenido)
 
         raiz.addView(
@@ -141,21 +141,15 @@ class MainActivity : Activity() {
             }
         )
 
-        texto(
-            "Explorá el catálogo",
-            21f,
-            true
-        ).also {
-            contenido.addView(
-                it,
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    bottomMargin = dp(14)
-                }
-            )
-        }
+        contenido.addView(
+            texto("Explorá el catálogo", 21f, true),
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = dp(14)
+            }
+        )
     }
 
     private fun crearEncabezado(titulo: String): TextView {
@@ -193,17 +187,11 @@ class MainActivity : Activity() {
                 for (i in 0 until listaJson.length()) {
                     val obj = listaJson.optJSONObject(i) ?: continue
 
-                    // Excluir contenido para adultos.
                     if (obj.optBoolean("esMayorDeEdad", false)) {
                         continue
                     }
 
-                    val id = obtenerTexto(
-                        obj,
-                        "id",
-                        "_id"
-                    )
-
+                    val id = obtenerTexto(obj, "id", "_id")
                     val titulo = obtenerTexto(
                         obj,
                         "titulo",
@@ -264,7 +252,10 @@ class MainActivity : Activity() {
                 runOnUiThread {
                     series.clear()
                     series.addAll(nuevasSeries)
-                    mostrarCatalogoFiltrado(buscador.text.toString())
+
+                    mostrarCatalogoFiltrado(
+                        buscador.text.toString()
+                    )
 
                     if (series.isEmpty()) {
                         mostrarError(
@@ -388,10 +379,7 @@ class MainActivity : Activity() {
         }
 
         tarjetaSerie.addView(
-            texto(
-                "Capítulos: ${serie.capitulos}",
-                13f
-            )
+            texto("Capítulos: ${serie.capitulos}", 13f)
         )
 
         tarjetaSerie.addView(
@@ -419,10 +407,8 @@ class MainActivity : Activity() {
 
         Thread {
             try {
-                val identificador = serie.id
-
                 val respuesta = consultarApi(
-                    "/api/series-locales/$identificador/capitulos"
+                    "/api/series-locales/${serie.id}/capitulos"
                 )
 
                 val json = JSONArray(respuesta)
@@ -507,10 +493,7 @@ class MainActivity : Activity() {
         )
 
         lista.addView(espacio(12))
-
-        lista.addView(
-            texto(serie.titulo, 23f, true)
-        )
+        lista.addView(texto(serie.titulo, 23f, true))
 
         lista.addView(
             texto(
@@ -546,7 +529,6 @@ class MainActivity : Activity() {
             lista.addView(espacio(8))
         }
 
-        // El ScrollView recibe directamente su hijo.
         scroll.addView(lista)
 
         raiz.addView(
@@ -589,13 +571,15 @@ class MainActivity : Activity() {
                         json.optString(i, "")
                     }
 
+                    val hostValido = try {
+                        URL(url).host == "cdn.shademanga.com"
+                    } catch (_: Exception) {
+                        false
+                    }
+
                     if (
                         url.startsWith("https://") &&
-                        try {
-                            URL(url).host == "cdn.shademanga.com"
-                        } catch (_: Exception) {
-                            false
-                        }
+                        hostValido
                     ) {
                         paginas.add(url)
                     }
@@ -630,9 +614,7 @@ class MainActivity : Activity() {
             )
         )
 
-        val scroll = ScrollView(this).apply {
-            isFillViewport = false
-        }
+        val scroll = ScrollView(this)
 
         val lista = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -650,9 +632,9 @@ class MainActivity : Activity() {
         lista.addView(
             texto(
                 "${serie.titulo} — " +
-                    (capitulo.titulo.ifBlank {
+                    capitulo.titulo.ifBlank {
                         "Capítulo ${capitulo.numero}"
-                    }),
+                    },
                 17f,
                 true
             )
@@ -692,7 +674,6 @@ class MainActivity : Activity() {
             }
         }
 
-        // Sin ScrollView.LayoutParams, para evitar el error anterior.
         scroll.addView(lista)
 
         raiz.addView(
@@ -713,10 +694,12 @@ class MainActivity : Activity() {
             conexion.requestMethod = "GET"
             conexion.connectTimeout = 15000
             conexion.readTimeout = 20000
+
             conexion.setRequestProperty(
                 "Accept",
                 "application/json"
             )
+
             conexion.setRequestProperty(
                 "User-Agent",
                 "ShadeMangaLite/1.0"
@@ -800,9 +783,7 @@ class MainActivity : Activity() {
     }
 
     private fun obtenerGeneros(obj: JSONObject): String {
-        val valor = obj.opt(
-            "generos"
-        ) ?: obj.opt("genero")
+        val valor = obj.opt("generos") ?: obj.opt("genero")
 
         return when (valor) {
             is JSONArray -> {
@@ -819,6 +800,7 @@ class MainActivity : Activity() {
                                 "titulo",
                                 "name"
                             )
+
                             if (nombre.isNotBlank()) {
                                 nombres.add(nombre)
                             }
@@ -826,6 +808,7 @@ class MainActivity : Activity() {
 
                         else -> {
                             val nombre = elemento?.toString().orEmpty()
+
                             if (nombre.isNotBlank()) {
                                 nombres.add(nombre)
                             }
@@ -900,11 +883,7 @@ class MainActivity : Activity() {
             )
 
             caja.addView(espacio(12))
-
-            caja.addView(
-                texto(mensaje, 14f)
-            )
-
+            caja.addView(texto(mensaje, 14f))
             caja.addView(espacio(18))
 
             caja.addView(
@@ -980,6 +959,8 @@ class MainActivity : Activity() {
     }
 
     private fun dp(valor: Int): Int {
-        return (valor * resources.displayMetrics.density).toInt()
+        return (
+            valor * resources.displayMetrics.density
+        ).toInt()
     }
 }
