@@ -12,7 +12,6 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
-import android.widget.Toast
 import coil.load
 import org.json.JSONArray
 import org.json.JSONObject
@@ -50,7 +49,6 @@ class MainActivity : Activity() {
     private lateinit var buscador: EditText
 
     private val series = mutableListOf<Serie>()
-    private var buscando = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,7 +61,7 @@ class MainActivity : Activity() {
     }
 
     // --------------------------------------------------
-    // INTERFAZ PRINCIPAL
+    // PANTALLA PRINCIPAL
     // --------------------------------------------------
 
     private fun mostrarPantallaBase() {
@@ -86,22 +84,13 @@ class MainActivity : Activity() {
         }
 
         encabezado.addView(
-            texto(
-                "ShadeManga Lite",
-                27f,
-                colorTexto,
-                true
-            )
+            texto("ShadeManga Lite", 27f, colorTexto, true)
         )
 
         encabezado.addView(espacio(5))
 
         encabezado.addView(
-            texto(
-                "Tu biblioteca de manga",
-                14f,
-                secundario
-            )
+            texto("Tu biblioteca de manga", 14f, secundario)
         )
 
         encabezado.addView(espacio(16))
@@ -126,6 +115,7 @@ class MainActivity : Activity() {
 
         buscador.addTextChangedListener(
             object : android.text.TextWatcher {
+
                 override fun beforeTextChanged(
                     s: CharSequence?,
                     start: Int,
@@ -139,8 +129,9 @@ class MainActivity : Activity() {
                     before: Int,
                     count: Int
                 ) {
-                    buscando = true
-                    mostrarCatalogoFiltrado(s?.toString().orEmpty())
+                    mostrarCatalogoFiltrado(
+                        s?.toString().orEmpty()
+                    )
                 }
 
                 override fun afterTextChanged(
@@ -161,11 +152,12 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
         }
 
+        // CORRECCIÓN: usar LinearLayout.LayoutParams.
         desplazamiento.addView(
             contenido,
-            ScrollView.LayoutParams(
-                ScrollView.LayoutParams.MATCH_PARENT,
-                ScrollView.LayoutParams.WRAP_CONTENT
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
             )
         )
 
@@ -179,13 +171,13 @@ class MainActivity : Activity() {
         )
 
         contenido.addView(
-            texto(
-                "Cargando catálogo...",
-                16f,
-                secundario
-            )
+            texto("Cargando catálogo...", 16f, secundario)
         )
     }
+
+    // --------------------------------------------------
+    // BÚSQUEDA Y CATÁLOGO
+    // --------------------------------------------------
 
     private fun mostrarCatalogoFiltrado(consulta: String) {
         if (!::contenido.isInitialized) return
@@ -208,7 +200,7 @@ class MainActivity : Activity() {
             contenido.addView(
                 texto(
                     if (series.isEmpty()) {
-                        "Todavía no hay mangas cargados."
+                        "Cargando catálogo o sin mangas disponibles."
                     } else {
                         "No se encontraron resultados."
                     },
@@ -225,7 +217,7 @@ class MainActivity : Activity() {
     }
 
     // --------------------------------------------------
-    // TARJETAS GRANDES CON PORTADAS REALES
+    // TARJETAS CON PORTADAS
     // --------------------------------------------------
 
     private fun agregarTarjetaSerie(serie: Serie) {
@@ -253,9 +245,7 @@ class MainActivity : Activity() {
 
         val url = serie.portadaUrl
 
-        if (!url.isNullOrBlank() &&
-            url.startsWith("https://")
-        ) {
+        if (!url.isNullOrBlank() && url.startsWith("https://")) {
             portada.load(url) {
                 crossfade(true)
                 placeholder(android.R.drawable.ic_menu_gallery)
@@ -265,38 +255,23 @@ class MainActivity : Activity() {
             portada.setImageResource(
                 android.R.drawable.ic_menu_gallery
             )
-            portada.scaleType =
-                ImageView.ScaleType.CENTER_INSIDE
+            portada.scaleType = ImageView.ScaleType.CENTER_INSIDE
         }
 
         val detalles = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(
-                dp(15),
-                dp(14),
-                dp(15),
-                dp(17)
-            )
+            setPadding(dp(15), dp(14), dp(15), dp(17))
         }
 
         detalles.addView(
-            texto(
-                serie.titulo,
-                19f,
-                colorTexto,
-                true
-            )
+            texto(serie.titulo, 19f, colorTexto, true)
         )
 
         detalles.addView(espacio(8))
 
         detalles.addView(
             texto(
-                if (serie.genero.isBlank()) {
-                    "Género no disponible"
-                } else {
-                    serie.genero
-                },
+                serie.genero.ifBlank { "Género no disponible" },
                 13f,
                 acento
             )
@@ -305,21 +280,13 @@ class MainActivity : Activity() {
         detalles.addView(espacio(6))
 
         detalles.addView(
-            texto(
-                "Autor: ${serie.autor}",
-                13f,
-                secundario
-            )
+            texto("Autor: ${serie.autor}", 13f, secundario)
         )
 
         detalles.addView(espacio(6))
 
         detalles.addView(
-            texto(
-                "${serie.capitulos} capítulos",
-                14f,
-                colorTexto
-            )
+            texto("${serie.capitulos} capítulos", 14f, colorTexto)
         )
 
         tarjetaSerie.addView(detalles)
@@ -340,18 +307,14 @@ class MainActivity : Activity() {
     }
 
     // --------------------------------------------------
-    // CARGA DEL CATÁLOGO
+    // CARGAR CATÁLOGO DESDE LA API
     // --------------------------------------------------
 
     private fun cargarCatalogo() {
         contenido.removeAllViews()
 
         contenido.addView(
-            texto(
-                "Conectando con ShadeManga...",
-                16f,
-                secundario
-            )
+            texto("Conectando con ShadeManga...", 16f, secundario)
         )
 
         Thread {
@@ -366,41 +329,24 @@ class MainActivity : Activity() {
                 for (i in 0 until lista.length()) {
                     val obj = lista.getJSONObject(i)
 
-                    // Excluir contenido marcado como adulto.
-                    if (obj.optBoolean(
-                            "esMayorDeEdad",
-                            false
-                        )
-                    ) {
+                    // Mantener el filtro de contenido adulto.
+                    if (obj.optBoolean("esMayorDeEdad", false)) {
                         continue
                     }
+
+                    val portada = obj.optString("portadaUrl", "")
 
                     resultado.add(
                         Serie(
                             id = obj.optInt("id"),
                             publicId = obj.optString("publicId"),
-                            titulo = obj.optString(
-                                "titulo",
-                                "Sin título"
-                            ),
-                            autor = obj.optString(
-                                "autor",
-                                "Desconocido"
-                            ),
-                            portadaUrl = obj.optString(
-                                "portadaUrl",
-                                ""
-                            ).takeIf {
-                                it.isNotBlank() &&
-                                it != "null"
+                            titulo = obj.optString("titulo", "Sin título"),
+                            autor = obj.optString("autor", "Desconocido"),
+                            portadaUrl = portada.takeIf {
+                                it.isNotBlank() && it != "null"
                             },
-                            capitulos = obj.optInt(
-                                "totalCapitulos",
-                                0
-                            ),
-                            genero = obtenerGeneros(
-                                obj.opt("generos")
-                            )
+                            capitulos = obj.optInt("totalCapitulos", 0),
+                            genero = obtenerGeneros(obj.opt("generos"))
                         )
                     )
                 }
@@ -409,11 +355,9 @@ class MainActivity : Activity() {
                     series.clear()
                     series.addAll(resultado)
 
-                    if (::buscador.isInitialized) {
-                        mostrarCatalogoFiltrado(
-                            buscador.text.toString()
-                        )
-                    }
+                    mostrarCatalogoFiltrado(
+                        buscador.text.toString()
+                    )
                 }
             } catch (e: Exception) {
                 runOnUiThread {
@@ -439,6 +383,7 @@ class MainActivity : Activity() {
                     )
 
                     val reintentar = boton("Reintentar")
+
                     reintentar.setOnClickListener {
                         cargarCatalogo()
                     }
@@ -466,7 +411,6 @@ class MainActivity : Activity() {
                             )
 
                             is String -> elemento
-
                             else -> ""
                         }
 
@@ -479,7 +423,6 @@ class MainActivity : Activity() {
                 }
 
                 is String -> valor
-
                 else -> ""
             }
         } catch (_: Exception) {
@@ -514,21 +457,11 @@ class MainActivity : Activity() {
                         Capitulo(
                             id = obj.optInt("id"),
                             publicId = obj.optString("publicId"),
-                            numero = obj.optInt(
-                                "numeroCapitulo",
-                                i + 1
-                            ),
-                            titulo = obj.optString(
-                                "titulo",
-                                ""
-                            ).takeIf {
-                                it.isNotBlank() &&
-                                it != "null"
+                            numero = obj.optInt("numeroCapitulo", i + 1),
+                            titulo = obj.optString("titulo", "").takeIf {
+                                it.isNotBlank() && it != "null"
                             },
-                            totalPaginas = obj.optInt(
-                                "totalPaginas",
-                                0
-                            )
+                            totalPaginas = obj.optInt("totalPaginas", 0)
                         )
                     )
                 }
@@ -536,34 +469,37 @@ class MainActivity : Activity() {
                 runOnUiThread {
                     raiz.removeAllViews()
 
-                    val encabezado = crearEncabezado(
-                        "‹  Volver",
-                        serie.titulo
-                    ) {
-                        mostrarInicio()
-                        mostrarCatalogoFiltrado(
-                            buscador.text.toString()
-                        )
-                    }
-
-                    raiz.addView(encabezado)
+                    raiz.addView(
+                        crearEncabezado(
+                            "‹  Volver",
+                            serie.titulo
+                        ) {
+                            mostrarInicio()
+                            mostrarCatalogoFiltrado(
+                                buscador.text.toString()
+                            )
+                        }
+                    )
 
                     val scroll = ScrollView(this)
+
                     val lista = LinearLayout(this).apply {
                         orientation = LinearLayout.VERTICAL
-                        setPadding(
-                            dp(16),
-                            dp(12),
-                            dp(16),
-                            dp(24)
-                        )
+                        setPadding(dp(16), dp(12), dp(16), dp(24))
                     }
 
-                    scroll.addView(lista)
+                    scroll.addView(
+                        lista,
+                        ScrollView.LayoutParams(
+                            ScrollView.LayoutParams.MATCH_PARENT,
+                            ScrollView.LayoutParams.WRAP_CONTENT
+                        )
+                    )
+
                     raiz.addView(
                         scroll,
                         LinearLayout.LayoutParams(
-                            -1,
+                            LinearLayout.LayoutParams.MATCH_PARENT,
                             0,
                             1f
                         )
@@ -584,7 +520,7 @@ class MainActivity : Activity() {
                             ?: "Capítulo ${capitulo.numero}"
 
                         val item = boton(
-                            "$nombre  ·  ${capitulo.totalPaginas} páginas"
+                            "$nombre · ${capitulo.totalPaginas} páginas"
                         )
 
                         item.setOnClickListener {
@@ -594,7 +530,7 @@ class MainActivity : Activity() {
                         lista.addView(
                             item,
                             LinearLayout.LayoutParams(
-                                -1,
+                                LinearLayout.LayoutParams.MATCH_PARENT,
                                 dp(58)
                             ).apply {
                                 bottomMargin = dp(9)
@@ -650,14 +586,14 @@ class MainActivity : Activity() {
                 runOnUiThread {
                     raiz.removeAllViews()
 
-                    val encabezado = crearEncabezado(
-                        "‹  Capítulos",
-                        "${serie.titulo} · Cap. ${capitulo.numero}"
-                    ) {
-                        mostrarSerie(serie)
-                    }
-
-                    raiz.addView(encabezado)
+                    raiz.addView(
+                        crearEncabezado(
+                            "‹  Capítulos",
+                            "${serie.titulo} · Cap. ${capitulo.numero}"
+                        ) {
+                            mostrarSerie(serie)
+                        }
+                    )
 
                     val scroll = ScrollView(this).apply {
                         isFillViewport = true
@@ -665,20 +601,21 @@ class MainActivity : Activity() {
 
                     val lista = LinearLayout(this).apply {
                         orientation = LinearLayout.VERTICAL
-                        setPadding(
-                            dp(5),
-                            dp(5),
-                            dp(5),
-                            dp(20)
-                        )
+                        setPadding(dp(5), dp(5), dp(5), dp(20))
                     }
 
-                    scroll.addView(lista)
+                    scroll.addView(
+                        lista,
+                        ScrollView.LayoutParams(
+                            ScrollView.LayoutParams.MATCH_PARENT,
+                            ScrollView.LayoutParams.WRAP_CONTENT
+                        )
+                    )
 
                     raiz.addView(
                         scroll,
                         LinearLayout.LayoutParams(
-                            -1,
+                            LinearLayout.LayoutParams.MATCH_PARENT,
                             0,
                             1f
                         )
@@ -697,16 +634,14 @@ class MainActivity : Activity() {
                     urls.forEachIndexed { indice, url ->
                         val imagen = ImageView(this).apply {
                             adjustViewBounds = true
-                            scaleType =
-                                ImageView.ScaleType.FIT_CENTER
-                            contentDescription =
-                                "Página ${indice + 1}"
+                            scaleType = ImageView.ScaleType.FIT_CENTER
+                            contentDescription = "Página ${indice + 1}"
                         }
 
                         lista.addView(
                             imagen,
                             LinearLayout.LayoutParams(
-                                -1,
+                                LinearLayout.LayoutParams.MATCH_PARENT,
                                 LinearLayout.LayoutParams.WRAP_CONTENT
                             ).apply {
                                 bottomMargin = dp(2)
@@ -718,9 +653,7 @@ class MainActivity : Activity() {
                             placeholder(
                                 android.R.drawable.ic_menu_gallery
                             )
-                            error(
-                                android.R.drawable.ic_delete
-                            )
+                            error(android.R.drawable.ic_delete)
                         }
                     }
                 }
@@ -734,7 +667,7 @@ class MainActivity : Activity() {
     }
 
     // --------------------------------------------------
-    // PETICIONES A LA API
+    // PETICIONES HTTP
     // --------------------------------------------------
 
     private fun consultarApi(ruta: String): String {
@@ -746,10 +679,12 @@ class MainActivity : Activity() {
             conexion.requestMethod = "GET"
             conexion.connectTimeout = 15000
             conexion.readTimeout = 20000
+
             conexion.setRequestProperty(
                 "Accept",
                 "application/json"
             )
+
             conexion.setRequestProperty(
                 "User-Agent",
                 "ShadeMangaLite/1.0"
@@ -778,7 +713,7 @@ class MainActivity : Activity() {
     }
 
     // --------------------------------------------------
-    // COMPONENTES Y ESTILOS
+    // COMPONENTES VISUALES
     // --------------------------------------------------
 
     private fun crearEncabezado(
@@ -788,12 +723,7 @@ class MainActivity : Activity() {
     ): LinearLayout {
         val encabezado = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(
-                dp(14),
-                dp(12),
-                dp(14),
-                dp(14)
-            )
+            setPadding(dp(14), dp(12), dp(14), dp(14))
             setBackgroundColor(fondo)
         }
 
@@ -803,7 +733,7 @@ class MainActivity : Activity() {
         encabezado.addView(
             volver,
             LinearLayout.LayoutParams(
-                -1,
+                LinearLayout.LayoutParams.MATCH_PARENT,
                 dp(46)
             )
         )
@@ -811,12 +741,7 @@ class MainActivity : Activity() {
         encabezado.addView(espacio(10))
 
         encabezado.addView(
-            texto(
-                titulo,
-                19f,
-                colorTexto,
-                true
-            )
+            texto(titulo, 19f, colorTexto, true)
         )
 
         return encabezado
@@ -837,8 +762,8 @@ class MainActivity : Activity() {
         raiz.addView(
             etiqueta,
             LinearLayout.LayoutParams(
-                -1,
-                -1
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.MATCH_PARENT
             )
         )
     }
@@ -858,12 +783,7 @@ class MainActivity : Activity() {
             }
 
             panel.addView(
-                texto(
-                    mensaje,
-                    18f,
-                    colorTexto,
-                    true
-                )
+                texto(mensaje, 18f, colorTexto, true)
             )
 
             panel.addView(espacio(10))
@@ -877,6 +797,7 @@ class MainActivity : Activity() {
             )
 
             val volver = boton("Volver al catálogo")
+
             volver.setOnClickListener {
                 mostrarInicio()
                 cargarCatalogo()
@@ -887,7 +808,10 @@ class MainActivity : Activity() {
 
             raiz.addView(
                 panel,
-                LinearLayout.LayoutParams(-1, -1)
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.MATCH_PARENT
+                )
             )
         }
     }
@@ -902,6 +826,7 @@ class MainActivity : Activity() {
             text = contenidoTexto
             textSize = tamano
             setTextColor(color)
+
             if (negrita) {
                 setTypeface(null, Typeface.BOLD)
             }
@@ -924,7 +849,7 @@ class MainActivity : Activity() {
     private fun espacio(alto: Int): View {
         return View(this).apply {
             layoutParams = LinearLayout.LayoutParams(
-                1,
+                dp(1),
                 dp(alto)
             )
         }
@@ -941,7 +866,8 @@ class MainActivity : Activity() {
     }
 
     private fun dp(valor: Int): Int {
-        return (valor * resources.displayMetrics.density)
-            .toInt()
+        return (
+            valor * resources.displayMetrics.density
+        ).toInt()
     }
 }
