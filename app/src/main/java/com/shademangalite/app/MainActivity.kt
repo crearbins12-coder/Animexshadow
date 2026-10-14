@@ -777,68 +777,50 @@ onHistorial = { mostrarPantallaEspecial(false) }
     }
 
     private fun crearTarjetaContinuar(serie: Serie): View {
-        val caja = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(10), dp(10), dp(10), dp(10))
-            background = crearFondo(tarjeta, 12)
-            isClickable = true
-            isFocusable = true
-            setOnClickListener {
-                mostrarSerie(serie)
-            }
-        }
+val capituloGuardado =
+preferencias.getString("ultimo_capitulo", "")
 
-        val portada = ImageView(this).apply {
-            scaleType = ImageView.ScaleType.CENTER_CROP
-        }
+val tituloGuardado =
+    preferencias.getString("ultimo_titulo", "")
 
-        caja.addView(
-            portada,
-            LinearLayout.LayoutParams(dp(82), dp(112))
-        )
-        cargarPortada(portada, serie, 112, 8)
-
-        val textos = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), 0, 0, 0)
-        }
-
-        textos.addView(texto(serie.titulo, 16f, true))
-        espacioEn(textos, 6)
-
-        val capituloGuardado = preferencias.getString("ultimo_capitulo", "")
-        val tituloGuardado = preferencias.getString("ultimo_titulo", "")
-
-        textos.addView(
-            texto(
-                if (tituloGuardado == serie.titulo && capituloGuardado?.isNotBlank() == true) {
-                    "Último capítulo leído guardado"
-                } else {
-                    "Retomá tu lectura"
-                },
-                12f,
-                false
-            ).apply {
-                setTextColor(textoSecundario)
-            }
-        )
-
-        espacioEn(textos, 8)
-
-        textos.addView(
-            texto("Tocar para ver capítulos →", 12f, true).apply {
-                setTextColor(acento)
-            }
-        )
-
-        caja.addView(
-            textos,
-            LinearLayout.LayoutParams(0, -2, 1f)
-        )
-
-        return caja
+val mensajeProgreso =
+    if (
+        tituloGuardado == serie.titulo &&
+        capituloGuardado?.isNotBlank() == true
+    ) {
+        "Último capítulo leído guardado"
+    } else {
+        "Retomá tu lectura"
     }
+
+return MangaContinueCard(
+    context = this,
+    serie = serie,
+    mensajeProgreso = mensajeProgreso,
+    colorTarjeta = tarjeta,
+    colorTextoSecundario = textoSecundario,
+    colorAcento = acento,
+    crearFondo = { color, radio ->
+        crearFondo(color, radio)
+    },
+    cargarPortada = { imagen, manga, alto, radio ->
+        cargarPortada(imagen, manga, alto, radio)
+    },
+    crearTexto = { contenidoTexto, tamano, negrita ->
+        texto(contenidoTexto, tamano, negrita)
+    },
+    espacioEn = { contenedor, altura ->
+        espacioEn(contenedor, altura)
+    },
+    dp = { valor ->
+        dp(valor)
+    },
+    alTocar = {
+        mostrarSerie(serie)
+    }
+)
+
+}
 
     private fun mostrarPantallaEspecial(esFavoritos: Boolean) {
         mostrandoTodos = false
