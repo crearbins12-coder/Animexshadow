@@ -393,7 +393,8 @@ setBackgroundColor(Color.rgb(25, 20, 39))
             )
         )
 
-        setContentView(raiz)
+        raiz.addView(crearNavegacionInferior())
+setContentView(raiz)
     }
 
     // =====================================================
