@@ -1,17 +1,18 @@
 pluginManagement {
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-    }
+repositories {
+google()
+mavenCentral()
+gradlePluginPortal()
 }
-dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories {
-        google()
-        mavenCentral()
-    }
 }
 
-rootProject.name = "Animexshadow"
+dependencyResolutionManagement {
+repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+repositories {
+google()
+mavenCentral()
+}
+}
+
+rootProject.name = "ShadeMangaLite"
 include(":app")
