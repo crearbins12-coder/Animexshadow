@@ -5,6 +5,7 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.widget.EditText
@@ -119,6 +120,7 @@ class MainActivity : Activity() {
 
         buscador.addTextChangedListener(
             object : android.text.TextWatcher {
+
                 override fun beforeTextChanged(
                     s: CharSequence?,
                     start: Int,
@@ -164,15 +166,24 @@ class MainActivity : Activity() {
         }
     }
 
+    // =========================================================
+    // CARGA DEL CATÁLOGO
+    // =========================================================
+
     private fun cargarCatalogo() {
-        mostrarPantallaCarga("Cargando catálogo...")
+        mostrarPantallaCarga("Conectando con ShadeManga...")
 
         Thread {
             try {
+                mostrarPantallaCarga("Descargando catálogo...")
+
                 val respuesta = consultarApi(
                     "/api/series-locales?pageSize=30"
                 )
 
+                mostrarPantallaCarga("Procesando catálogo...")
+
+                // La API devuelve directamente un array JSON: [...]
                 val listaJson = JSONArray(respuesta)
 
                 val nuevasSeries = mutableListOf<Serie>()
@@ -180,11 +191,13 @@ class MainActivity : Activity() {
                 for (i in 0 until listaJson.length()) {
                     val obj = listaJson.optJSONObject(i) ?: continue
 
+                    // Excluir contenido marcado para adultos.
                     if (obj.optBoolean("esMayorDeEdad", false)) {
                         continue
                     }
 
                     val id = obtenerTexto(obj, "id", "_id")
+
                     val titulo = obtenerTexto(
                         obj,
                         "titulo",
@@ -243,31 +256,46 @@ class MainActivity : Activity() {
                 }
 
                 runOnUiThread {
+                    if (isFinishing || isDestroyed) {
+                        return@runOnUiThread
+                    }
+
                     series.clear()
                     series.addAll(nuevasSeries)
 
+                    // Reconstruir la pantalla principal y mostrar resultados.
+                    mostrarInicio()
                     mostrarCatalogoFiltrado(
                         buscador.text.toString()
                     )
 
                     if (series.isEmpty()) {
                         mostrarError(
-                            "No se encontraron series. " +
-                                "Puede que la respuesta de la API " +
-                                "tenga un formato diferente."
+                            "La API respondió correctamente, pero no " +
+                                "se encontraron series disponibles."
                         )
                     }
                 }
+
             } catch (e: Exception) {
                 runOnUiThread {
+                    if (isFinishing || isDestroyed) {
+                        return@runOnUiThread
+                    }
+
                     mostrarError(
-                        "No se pudo cargar el catálogo.\n\n" +
-                            (e.message ?: "Error de conexión")
+                        "Error al cargar el catálogo:\n\n" +
+                            "${e.javaClass.simpleName}: " +
+                            (e.message ?: "Sin detalles del error")
                     )
                 }
             }
         }.start()
     }
+
+    // =========================================================
+    // CATÁLOGO Y BÚSQUEDA
+    // =========================================================
 
     private fun mostrarCatalogoFiltrado(filtro: String) {
         if (!::contenido.isInitialized) return
@@ -395,6 +423,10 @@ class MainActivity : Activity() {
         )
     }
 
+    // =========================================================
+    // CAPÍTULOS
+    // =========================================================
+
     private fun mostrarSerie(serie: Serie) {
         mostrarPantallaCarga("Cargando capítulos...")
 
@@ -445,12 +477,22 @@ class MainActivity : Activity() {
                 }
 
                 runOnUiThread {
+                    if (isFinishing || isDestroyed) {
+                        return@runOnUiThread
+                    }
+
                     mostrarListaCapitulos(serie, capitulos)
                 }
+
             } catch (e: Exception) {
                 runOnUiThread {
+                    if (isFinishing || isDestroyed) {
+                        return@runOnUiThread
+                    }
+
                     mostrarError(
                         "No se pudieron cargar los capítulos.\n\n" +
+                            "${e.javaClass.simpleName}: " +
                             (e.message ?: "Error desconocido")
                     )
                 }
@@ -473,6 +515,7 @@ class MainActivity : Activity() {
         )
 
         val scroll = ScrollView(this)
+
         val lista = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(12), dp(16), dp(24))
@@ -534,6 +577,10 @@ class MainActivity : Activity() {
         )
     }
 
+    // =========================================================
+    // LECTOR DE PÁGINAS
+    // =========================================================
+
     private fun mostrarLector(
         serie: Serie,
         capitulo: Capitulo
@@ -579,12 +626,22 @@ class MainActivity : Activity() {
                 }
 
                 runOnUiThread {
+                    if (isFinishing || isDestroyed) {
+                        return@runOnUiThread
+                    }
+
                     mostrarPaginas(serie, capitulo, paginas)
                 }
+
             } catch (e: Exception) {
                 runOnUiThread {
+                    if (isFinishing || isDestroyed) {
+                        return@runOnUiThread
+                    }
+
                     mostrarError(
                         "No se pudieron cargar las páginas.\n\n" +
+                            "${e.javaClass.simpleName}: " +
                             (e.message ?: "Error desconocido")
                     )
                 }
@@ -679,6 +736,10 @@ class MainActivity : Activity() {
         )
     }
 
+    // =========================================================
+    // CONEXIÓN HTTP
+    // =========================================================
+
     private fun consultarApi(ruta: String): String {
         val url = URL("https://shademanga.com$ruta")
         val conexion = url.openConnection() as HttpURLConnection
@@ -711,14 +772,28 @@ class MainActivity : Activity() {
             }.orEmpty()
 
             if (codigo !in 200..299) {
-                throw Exception("HTTP $codigo: $respuesta")
+                throw Exception(
+                    "HTTP $codigo: " +
+                        respuesta.take(1000)
+                )
+            }
+
+            if (respuesta.isBlank()) {
+                throw Exception(
+                    "La API devolvió una respuesta vacía."
+                )
             }
 
             return respuesta
+
         } finally {
             conexion.disconnect()
         }
     }
+
+    // =========================================================
+    // PROCESAMIENTO DEL JSON
+    // =========================================================
 
     private fun obtenerArray(
         json: JSONObject,
@@ -739,7 +814,10 @@ class MainActivity : Activity() {
                     "resultados"
                 )) {
                     val arreglo = valor.optJSONArray(subclave)
-                    if (arreglo != null) return arreglo
+
+                    if (arreglo != null) {
+                        return arreglo
+                    }
                 }
             }
         }
@@ -763,12 +841,18 @@ class MainActivity : Activity() {
                 valor !is JSONArray
             ) {
                 val texto = valor.toString().trim()
-                if (texto.isNotBlank()) return texto
+
+                if (texto.isNotBlank()) {
+                    return texto
+                }
             }
 
             if (valor is JSONObject) {
                 val url = valor.optString("url", "")
-                if (url.isNotBlank()) return url
+
+                if (url.isNotBlank()) {
+                    return url
+                }
             }
         }
 
@@ -800,7 +884,8 @@ class MainActivity : Activity() {
                         }
 
                         else -> {
-                            val nombre = elemento?.toString().orEmpty()
+                            val nombre =
+                                elemento?.toString().orEmpty()
 
                             if (nombre.isNotBlank()) {
                                 nombres.add(nombre)
@@ -823,79 +908,110 @@ class MainActivity : Activity() {
         }
     }
 
+    // =========================================================
+    // PANTALLAS DE CARGA Y ERROR
+    // =========================================================
+
     private fun mostrarPantallaCarga(mensaje: String) {
-        runOnUiThread {
-            raiz.removeAllViews()
-
-            raiz.addView(
-                crearEncabezado("ShadeManga Lite"),
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    dp(64)
-                )
-            )
-
-            val carga = TextView(this).apply {
-                text = mensaje
-                textSize = 16f
-                setTextColor(blanco)
-                gravity = Gravity.CENTER
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            runOnUiThread {
+                if (!isFinishing && !isDestroyed) {
+                    mostrarPantallaCarga(mensaje)
+                }
             }
-
-            raiz.addView(
-                carga,
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    0,
-                    1f
-                )
-            )
+            return
         }
+
+        if (isFinishing || isDestroyed) {
+            return
+        }
+
+        raiz.removeAllViews()
+
+        raiz.addView(
+            crearEncabezado("ShadeManga Lite"),
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(64)
+            )
+        )
+
+        val carga = TextView(this).apply {
+            text = mensaje
+            textSize = 16f
+            setTextColor(blanco)
+            gravity = Gravity.CENTER
+            setPadding(dp(20), dp(20), dp(20), dp(20))
+        }
+
+        raiz.addView(
+            carga,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f
+            )
+        )
     }
 
     private fun mostrarError(mensaje: String) {
-        runOnUiThread {
-            raiz.removeAllViews()
-
-            raiz.addView(
-                crearEncabezado("ShadeManga Lite"),
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    dp(64)
-                )
-            )
-
-            val caja = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER
-                setPadding(dp(24), dp(20), dp(24), dp(20))
-            }
-
-            caja.addView(
-                texto("Ocurrió un problema", 21f, true)
-            )
-
-            caja.addView(espacio(12))
-            caja.addView(texto(mensaje, 14f))
-            caja.addView(espacio(18))
-
-            caja.addView(
-                boton("Reintentar") {
-                    mostrarInicio()
-                    cargarCatalogo()
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            runOnUiThread {
+                if (!isFinishing && !isDestroyed) {
+                    mostrarError(mensaje)
                 }
-            )
-
-            raiz.addView(
-                caja,
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    0,
-                    1f
-                )
-            )
+            }
+            return
         }
+
+        if (isFinishing || isDestroyed) {
+            return
+        }
+
+        raiz.removeAllViews()
+
+        raiz.addView(
+            crearEncabezado("ShadeManga Lite"),
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(64)
+            )
+        )
+
+        val caja = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(24), dp(20), dp(24), dp(20))
+        }
+
+        caja.addView(
+            texto("Ocurrió un problema", 21f, true)
+        )
+
+        caja.addView(espacio(12))
+        caja.addView(texto(mensaje, 14f))
+        caja.addView(espacio(18))
+
+        caja.addView(
+            boton("Reintentar") {
+                mostrarInicio()
+                cargarCatalogo()
+            }
+        )
+
+        raiz.addView(
+            caja,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f
+            )
+        )
     }
+
+    // =========================================================
+    // COMPONENTES VISUALES
+    // =========================================================
 
     private fun texto(
         contenidoTexto: String,
@@ -928,7 +1044,10 @@ class MainActivity : Activity() {
             background = crearFondo(tarjeta, 12)
             isClickable = true
             isFocusable = true
-            setOnClickListener { accion() }
+
+            setOnClickListener {
+                accion()
+            }
         }
     }
 
