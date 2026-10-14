@@ -283,15 +283,15 @@ class MainActivity : Activity() {
 
         val encabezado = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(14), dp(16), dp(12))
-            setBackgroundColor(Color.rgb(28, 21, 43))
+            setPadding(dp(18), dp(18), dp(18), dp(14))
+setBackgroundColor(Color.rgb(25, 20, 39)) 
         }
 
         encabezado.addView(
-            texto(titulo, 24f, true).apply {
-                setTextColor(acento)
-            }
-        )
+    texto(titulo, 26f, true).apply {
+        setTextColor(Color.WHITE)
+    }
+)
 
         encabezado.addView(
             texto("Tu biblioteca de manga", 13f, false).apply {
