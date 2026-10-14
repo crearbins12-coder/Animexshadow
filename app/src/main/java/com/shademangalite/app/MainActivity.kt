@@ -1,184 +1,741 @@
 package com.shademangalite.app
 
 import android.app.Activity
-import android.os.Bundle
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.os.Bundle
 import android.view.Gravity
 import android.view.View
-import android.widget.*
-import android.text.TextWatcher
-import android.text.Editable
+import android.widget.EditText
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
+import android.widget.Toast
 import coil.load
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
+data class Serie(
+    val id: Int,
+    val publicId: String,
+    val titulo: String,
+    val autor: String,
+    val portadaUrl: String?,
+    val capitulos: Int,
+    val genero: String
+)
+
+data class Capitulo(
+    val id: Int,
+    val publicId: String,
+    val numero: Int,
+    val titulo: String?,
+    val totalPaginas: Int
+)
+
 class MainActivity : Activity() {
 
-    private val fondo = Color.rgb(18, 18, 24)
-    private val tarjeta = Color.rgb(30, 30, 40)
-    private val acento = Color.rgb(160, 100, 255)
-    private val texto = Color.WHITE
-    private val secundario = Color.rgb(180, 180, 195)
+    private val fondo = Color.rgb(18, 16, 27)
+    private val tarjeta = Color.rgb(34, 29, 46)
+    private val acento = Color.rgb(173, 113, 255)
+    private val colorTexto = Color.rgb(245, 242, 250)
+    private val secundario = Color.rgb(185, 176, 202)
 
+    private lateinit var raiz: LinearLayout
     private lateinit var contenido: LinearLayout
     private lateinit var buscador: EditText
 
-    private var cargando = false
-    private var errorCarga: String? = null
-
-    private var serieActual: Serie? = null
-    private var capituloActual: Capitulo? = null
-    private var paginasActuales = emptyList<String>()
-
-    private var pantallaActual = "inicio"
-
-    data class Serie(
-        val id: Int,
-        val publicId: String,
-        val titulo: String,
-        val autor: String,
-        val portadaUrl: String?,
-        val capitulos: Int,
-        val genero: String
-    )
-
-    data class Capitulo(
-        val id: Int,
-        val publicId: String,
-        val numero: Int,
-        val titulo: String?,
-        val totalPaginas: Int
-    )
-
     private val series = mutableListOf<Serie>()
+    private var buscando = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        mostrarInicio()
+
+        window.statusBarColor = fondo
+        window.navigationBarColor = fondo
+
+        mostrarPantallaBase()
         cargarCatalogo()
     }
 
-    private fun crearFondo(
-        color: Int,
-        radio: Float = 18f
-    ): GradientDrawable {
-        return GradientDrawable().apply {
-            setColor(color)
-            cornerRadius = radio
-        }
-    }
+    // --------------------------------------------------
+    // INTERFAZ PRINCIPAL
+    // --------------------------------------------------
 
-    private fun texto(
-        valor: String,
-        tamano: Float = 15f,
-        color: Int = texto,
-        negrita: Boolean = false
-    ): TextView {
-        return TextView(this).apply {
-            text = valor
-            textSize = tamano
-            setTextColor(color)
-
-            if (negrita) {
-                setTypeface(null, Typeface.BOLD)
-            }
-        }
-    }
-
-    private fun boton(
-        valor: String,
-        accion: () -> Unit
-    ): TextView {
-        return TextView(this).apply {
-            text = valor
-            textSize = 15f
-            setTextColor(texto)
-            gravity = Gravity.CENTER
-            setPadding(16, 13, 16, 13)
-            background = crearFondo(tarjeta)
-            isClickable = true
-            isFocusable = true
-            setOnClickListener { accion() }
-        }
-    }
-
-    private fun espacio(altura: Int = 12): View {
-        return View(this).apply {
-            layoutParams = LinearLayout.LayoutParams(1, altura)
-        }
-    }
-
-    private fun prepararPantalla(titulo: String) {
-        pantallaActual = titulo
-
-        val raiz = LinearLayout(this).apply {
+    private fun mostrarPantallaBase() {
+        raiz = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(fondo)
         }
 
+        setContentView(raiz)
+        mostrarInicio()
+    }
+
+    private fun mostrarInicio() {
+        raiz.removeAllViews()
+
         val encabezado = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(16, 12, 16, 12)
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(18), dp(18), dp(12))
+            setBackgroundColor(fondo)
         }
 
         encabezado.addView(
-            texto("ShadeManga", 23f, acento, true),
-            LinearLayout.LayoutParams(0, -2, 1f)
+            texto(
+                "ShadeManga Lite",
+                27f,
+                colorTexto,
+                true
+            )
         )
 
+        encabezado.addView(espacio(5))
+
         encabezado.addView(
-            boton("Inicio") {
-                mostrarInicio()
+            texto(
+                "Tu biblioteca de manga",
+                14f,
+                secundario
+            )
+        )
+
+        encabezado.addView(espacio(16))
+
+        buscador = EditText(this).apply {
+            hint = "Buscar por título, autor o género..."
+            setHintTextColor(secundario)
+            setTextColor(colorTexto)
+            textSize = 15f
+            singleLine = true
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            background = crearFondo(tarjeta, 14f)
+        }
+
+        encabezado.addView(
+            buscador,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(50)
+            )
+        )
+
+        buscador.addTextChangedListener(
+            object : android.text.TextWatcher {
+                override fun beforeTextChanged(
+                    s: CharSequence?,
+                    start: Int,
+                    count: Int,
+                    after: Int
+                ) {}
+
+                override fun onTextChanged(
+                    s: CharSequence?,
+                    start: Int,
+                    before: Int,
+                    count: Int
+                ) {
+                    buscando = true
+                    mostrarCatalogoFiltrado(s?.toString().orEmpty())
+                }
+
+                override fun afterTextChanged(
+                    s: android.text.Editable?
+                ) {}
             }
         )
 
         raiz.addView(encabezado)
 
-        val scroll = ScrollView(this).apply {
+        val desplazamiento = ScrollView(this).apply {
             isFillViewport = true
+            clipToPadding = false
+            setPadding(dp(14), dp(6), dp(14), dp(20))
         }
 
         contenido = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(16, 12, 16, 24)
         }
 
-        scroll.addView(contenido)
+        desplazamiento.addView(
+            contenido,
+            ScrollView.LayoutParams(
+                ScrollView.LayoutParams.MATCH_PARENT,
+                ScrollView.LayoutParams.WRAP_CONTENT
+            )
+        )
 
         raiz.addView(
-            scroll,
-            LinearLayout.LayoutParams(-1, 0, 1f)
+            desplazamiento,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f
+            )
         )
 
-        val navegacion = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            setPadding(8, 8, 8, 8)
-            setBackgroundColor(tarjeta)
+        contenido.addView(
+            texto(
+                "Cargando catálogo...",
+                16f,
+                secundario
+            )
+        )
+    }
+
+    private fun mostrarCatalogoFiltrado(consulta: String) {
+        if (!::contenido.isInitialized) return
+
+        contenido.removeAllViews()
+
+        val q = consulta.trim()
+
+        val resultados = if (q.isEmpty()) {
+            series
+        } else {
+            series.filter {
+                it.titulo.contains(q, ignoreCase = true) ||
+                it.autor.contains(q, ignoreCase = true) ||
+                it.genero.contains(q, ignoreCase = true)
+            }
         }
 
-        navegacion.addView(
-            boton("Inicio") {
-                mostrarInicio()
-            },
-            LinearLayout.LayoutParams(0, -2, 1f)
-        )
+        if (resultados.isEmpty()) {
+            contenido.addView(
+                texto(
+                    if (series.isEmpty()) {
+                        "Todavía no hay mangas cargados."
+                    } else {
+                        "No se encontraron resultados."
+                    },
+                    16f,
+                    secundario
+                )
+            )
+            return
+        }
 
-        navegacion.addView(
-            boton("Buscar") {
-                mostrarBusqueda()
-            },
-            LinearLayout.LayoutParams(0, -2, 1f)
-        )
-
-        raiz.addView(navegacion)
-        setContentView(raiz)
+        resultados.forEach { serie ->
+            agregarTarjetaSerie(serie)
+        }
     }
+
+    // --------------------------------------------------
+    // TARJETAS GRANDES CON PORTADAS REALES
+    // --------------------------------------------------
+
+    private fun agregarTarjetaSerie(serie: Serie) {
+        val tarjetaSerie = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = crearFondo(tarjeta, 18f)
+            clipToOutline = true
+            isClickable = true
+            isFocusable = true
+        }
+
+        val portada = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            setBackgroundColor(tarjeta)
+            contentDescription = "Portada de ${serie.titulo}"
+        }
+
+        tarjetaSerie.addView(
+            portada,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(250)
+            )
+        )
+
+        val url = serie.portadaUrl
+
+        if (!url.isNullOrBlank() &&
+            url.startsWith("https://")
+        ) {
+            portada.load(url) {
+                crossfade(true)
+                placeholder(android.R.drawable.ic_menu_gallery)
+                error(android.R.drawable.ic_menu_gallery)
+            }
+        } else {
+            portada.setImageResource(
+                android.R.drawable.ic_menu_gallery
+            )
+            portada.scaleType =
+                ImageView.ScaleType.CENTER_INSIDE
+        }
+
+        val detalles = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(
+                dp(15),
+                dp(14),
+                dp(15),
+                dp(17)
+            )
+        }
+
+        detalles.addView(
+            texto(
+                serie.titulo,
+                19f,
+                colorTexto,
+                true
+            )
+        )
+
+        detalles.addView(espacio(8))
+
+        detalles.addView(
+            texto(
+                if (serie.genero.isBlank()) {
+                    "Género no disponible"
+                } else {
+                    serie.genero
+                },
+                13f,
+                acento
+            )
+        )
+
+        detalles.addView(espacio(6))
+
+        detalles.addView(
+            texto(
+                "Autor: ${serie.autor}",
+                13f,
+                secundario
+            )
+        )
+
+        detalles.addView(espacio(6))
+
+        detalles.addView(
+            texto(
+                "${serie.capitulos} capítulos",
+                14f,
+                colorTexto
+            )
+        )
+
+        tarjetaSerie.addView(detalles)
+
+        tarjetaSerie.setOnClickListener {
+            mostrarSerie(serie)
+        }
+
+        contenido.addView(
+            tarjetaSerie,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = dp(18)
+            }
+        )
+    }
+
+    // --------------------------------------------------
+    // CARGA DEL CATÁLOGO
+    // --------------------------------------------------
+
+    private fun cargarCatalogo() {
+        contenido.removeAllViews()
+
+        contenido.addView(
+            texto(
+                "Conectando con ShadeManga...",
+                16f,
+                secundario
+            )
+        )
+
+        Thread {
+            try {
+                val respuesta = consultarApi(
+                    "/api/series-locales?pageSize=30"
+                )
+
+                val lista = JSONArray(respuesta)
+                val resultado = mutableListOf<Serie>()
+
+                for (i in 0 until lista.length()) {
+                    val obj = lista.getJSONObject(i)
+
+                    // Excluir contenido marcado como adulto.
+                    if (obj.optBoolean(
+                            "esMayorDeEdad",
+                            false
+                        )
+                    ) {
+                        continue
+                    }
+
+                    resultado.add(
+                        Serie(
+                            id = obj.optInt("id"),
+                            publicId = obj.optString("publicId"),
+                            titulo = obj.optString(
+                                "titulo",
+                                "Sin título"
+                            ),
+                            autor = obj.optString(
+                                "autor",
+                                "Desconocido"
+                            ),
+                            portadaUrl = obj.optString(
+                                "portadaUrl",
+                                ""
+                            ).takeIf {
+                                it.isNotBlank() &&
+                                it != "null"
+                            },
+                            capitulos = obj.optInt(
+                                "totalCapitulos",
+                                0
+                            ),
+                            genero = obtenerGeneros(
+                                obj.opt("generos")
+                            )
+                        )
+                    )
+                }
+
+                runOnUiThread {
+                    series.clear()
+                    series.addAll(resultado)
+
+                    if (::buscador.isInitialized) {
+                        mostrarCatalogoFiltrado(
+                            buscador.text.toString()
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    contenido.removeAllViews()
+
+                    contenido.addView(
+                        texto(
+                            "No se pudo cargar el catálogo.",
+                            18f,
+                            colorTexto,
+                            true
+                        )
+                    )
+
+                    contenido.addView(espacio(8))
+
+                    contenido.addView(
+                        texto(
+                            e.message ?: "Error de conexión",
+                            13f,
+                            secundario
+                        )
+                    )
+
+                    val reintentar = boton("Reintentar")
+                    reintentar.setOnClickListener {
+                        cargarCatalogo()
+                    }
+
+                    contenido.addView(espacio(12))
+                    contenido.addView(reintentar)
+                }
+            }
+        }.start()
+    }
+
+    private fun obtenerGeneros(valor: Any?): String {
+        return try {
+            when (valor) {
+                is JSONArray -> {
+                    val nombres = mutableListOf<String>()
+
+                    for (i in 0 until valor.length()) {
+                        val elemento = valor.get(i)
+
+                        val nombre = when (elemento) {
+                            is JSONObject -> elemento.optString(
+                                "nombre",
+                                elemento.optString("titulo", "")
+                            )
+
+                            is String -> elemento
+
+                            else -> ""
+                        }
+
+                        if (nombre.isNotBlank()) {
+                            nombres.add(nombre)
+                        }
+                    }
+
+                    nombres.distinct().take(3).joinToString(" · ")
+                }
+
+                is String -> valor
+
+                else -> ""
+            }
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    // --------------------------------------------------
+    // FICHA Y CAPÍTULOS
+    // --------------------------------------------------
+
+    private fun mostrarSerie(serie: Serie) {
+        mostrarPantallaCarga(serie.titulo)
+
+        Thread {
+            try {
+                val respuesta = consultarApi(
+                    "/api/series-locales/${serie.id}/capitulos"
+                )
+
+                val json = JSONArray(respuesta)
+                val capitulos = mutableListOf<Capitulo>()
+
+                for (i in 0 until json.length()) {
+                    val obj = json.getJSONObject(i)
+
+                    if (!obj.optBoolean("visible", true)) {
+                        continue
+                    }
+
+                    capitulos.add(
+                        Capitulo(
+                            id = obj.optInt("id"),
+                            publicId = obj.optString("publicId"),
+                            numero = obj.optInt(
+                                "numeroCapitulo",
+                                i + 1
+                            ),
+                            titulo = obj.optString(
+                                "titulo",
+                                ""
+                            ).takeIf {
+                                it.isNotBlank() &&
+                                it != "null"
+                            },
+                            totalPaginas = obj.optInt(
+                                "totalPaginas",
+                                0
+                            )
+                        )
+                    )
+                }
+
+                runOnUiThread {
+                    raiz.removeAllViews()
+
+                    val encabezado = crearEncabezado(
+                        "‹  Volver",
+                        serie.titulo
+                    ) {
+                        mostrarInicio()
+                        mostrarCatalogoFiltrado(
+                            buscador.text.toString()
+                        )
+                    }
+
+                    raiz.addView(encabezado)
+
+                    val scroll = ScrollView(this)
+                    val lista = LinearLayout(this).apply {
+                        orientation = LinearLayout.VERTICAL
+                        setPadding(
+                            dp(16),
+                            dp(12),
+                            dp(16),
+                            dp(24)
+                        )
+                    }
+
+                    scroll.addView(lista)
+                    raiz.addView(
+                        scroll,
+                        LinearLayout.LayoutParams(
+                            -1,
+                            0,
+                            1f
+                        )
+                    )
+
+                    if (capitulos.isEmpty()) {
+                        lista.addView(
+                            texto(
+                                "No hay capítulos disponibles.",
+                                16f,
+                                secundario
+                            )
+                        )
+                    }
+
+                    capitulos.forEach { capitulo ->
+                        val nombre = capitulo.titulo
+                            ?: "Capítulo ${capitulo.numero}"
+
+                        val item = boton(
+                            "$nombre  ·  ${capitulo.totalPaginas} páginas"
+                        )
+
+                        item.setOnClickListener {
+                            mostrarLector(serie, capitulo)
+                        }
+
+                        lista.addView(
+                            item,
+                            LinearLayout.LayoutParams(
+                                -1,
+                                dp(58)
+                            ).apply {
+                                bottomMargin = dp(9)
+                            }
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                mostrarError(
+                    "No se pudieron cargar los capítulos.",
+                    e
+                )
+            }
+        }.start()
+    }
+
+    // --------------------------------------------------
+    // LECTOR VERTICAL
+    // --------------------------------------------------
+
+    private fun mostrarLector(
+        serie: Serie,
+        capitulo: Capitulo
+    ) {
+        mostrarPantallaCarga(
+            "Cargando capítulo ${capitulo.numero}..."
+        )
+
+        Thread {
+            try {
+                val respuesta = consultarApi(
+                    "/api/series-locales/${serie.id}" +
+                    "/capitulos/${capitulo.id}/paginas"
+                )
+
+                val objeto = JSONObject(respuesta)
+                val paginas = objeto.optJSONArray("paginas")
+                    ?: JSONArray()
+
+                val urls = mutableListOf<String>()
+
+                for (i in 0 until paginas.length()) {
+                    val url = paginas.optString(i)
+
+                    if (
+                        url.startsWith("https://") &&
+                        URL(url).host == "cdn.shademanga.com"
+                    ) {
+                        urls.add(url)
+                    }
+                }
+
+                runOnUiThread {
+                    raiz.removeAllViews()
+
+                    val encabezado = crearEncabezado(
+                        "‹  Capítulos",
+                        "${serie.titulo} · Cap. ${capitulo.numero}"
+                    ) {
+                        mostrarSerie(serie)
+                    }
+
+                    raiz.addView(encabezado)
+
+                    val scroll = ScrollView(this).apply {
+                        isFillViewport = true
+                    }
+
+                    val lista = LinearLayout(this).apply {
+                        orientation = LinearLayout.VERTICAL
+                        setPadding(
+                            dp(5),
+                            dp(5),
+                            dp(5),
+                            dp(20)
+                        )
+                    }
+
+                    scroll.addView(lista)
+
+                    raiz.addView(
+                        scroll,
+                        LinearLayout.LayoutParams(
+                            -1,
+                            0,
+                            1f
+                        )
+                    )
+
+                    if (urls.isEmpty()) {
+                        lista.addView(
+                            texto(
+                                "No hay páginas disponibles.",
+                                16f,
+                                secundario
+                            )
+                        )
+                    }
+
+                    urls.forEachIndexed { indice, url ->
+                        val imagen = ImageView(this).apply {
+                            adjustViewBounds = true
+                            scaleType =
+                                ImageView.ScaleType.FIT_CENTER
+                            contentDescription =
+                                "Página ${indice + 1}"
+                        }
+
+                        lista.addView(
+                            imagen,
+                            LinearLayout.LayoutParams(
+                                -1,
+                                LinearLayout.LayoutParams.WRAP_CONTENT
+                            ).apply {
+                                bottomMargin = dp(2)
+                            }
+                        )
+
+                        imagen.load(url) {
+                            crossfade(true)
+                            placeholder(
+                                android.R.drawable.ic_menu_gallery
+                            )
+                            error(
+                                android.R.drawable.ic_delete
+                            )
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                mostrarError(
+                    "No se pudo abrir el capítulo.",
+                    e
+                )
+            }
+        }.start()
+    }
+
+    // --------------------------------------------------
+    // PETICIONES A LA API
+    // --------------------------------------------------
 
     private fun consultarApi(ruta: String): String {
         val conexion = URL(
@@ -200,591 +757,191 @@ class MainActivity : Activity() {
 
             val codigo = conexion.responseCode
 
-            if (codigo !in 200..299) {
-                throw Exception("Error HTTP $codigo")
+            val flujo = if (codigo in 200..299) {
+                conexion.inputStream
+            } else {
+                conexion.errorStream
             }
 
-            return conexion.inputStream
-                .bufferedReader(Charsets.UTF_8)
-                .use { it.readText() }
+            val cuerpo = flujo?.bufferedReader()?.use {
+                it.readText()
+            } ?: ""
 
+            if (codigo !in 200..299) {
+                throw Exception("HTTP $codigo")
+            }
+
+            return cuerpo
         } finally {
             conexion.disconnect()
         }
     }
 
-    private fun cargarCatalogo() {
-        cargando = true
-        errorCarga = null
-        mostrarInicio()
+    // --------------------------------------------------
+    // COMPONENTES Y ESTILOS
+    // --------------------------------------------------
 
-        Thread {
-            try {
-                val respuesta = consultarApi(
-                    "/api/series-locales?pageSize=30"
-                )
+    private fun crearEncabezado(
+        botonVolver: String,
+        titulo: String,
+        accion: () -> Unit
+    ): LinearLayout {
+        val encabezado = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(
+                dp(14),
+                dp(12),
+                dp(14),
+                dp(14)
+            )
+            setBackgroundColor(fondo)
+        }
 
-                val json = JSONArray(respuesta)
-                val resultados = mutableListOf<Serie>()
+        val volver = boton(botonVolver)
+        volver.setOnClickListener { accion() }
 
-                for (i in 0 until json.length()) {
-                    val item = json.getJSONObject(i)
+        encabezado.addView(
+            volver,
+            LinearLayout.LayoutParams(
+                -1,
+                dp(46)
+            )
+        )
 
-                    // Excluir mangas marcados para adultos.
-                    if (item.optBoolean("esMayorDeEdad", false)) {
-                        continue
-                    }
+        encabezado.addView(espacio(10))
 
-                    val titulo = item.optString("titulo", "").trim()
-
-                    if (titulo.isEmpty()) continue
-
-                    val portada = item.optString("portadaUrl", "")
-                        .takeUnless {
-                            it.isBlank() || it == "null"
-                        }
-
-                    val genero = item.optString("generos", "")
-                        .takeUnless {
-                            it.isBlank() || it == "null"
-                        } ?: "Sin género"
-
-                    resultados.add(
-                        Serie(
-                            id = item.optInt("id", 0),
-                            publicId = item.optString("publicId", ""),
-                            titulo = titulo,
-                            autor = item.optString("autor", "")
-                                .takeUnless { it == "null" }
-                                .orEmpty(),
-                            portadaUrl = portada,
-                            capitulos = item.optInt("totalCapitulos", 0),
-                            genero = genero
-                        )
-                    )
-                }
-
-                runOnUiThread {
-                    series.clear()
-                    series.addAll(resultados)
-                    cargando = false
-                    errorCarga = null
-                    mostrarInicio()
-                }
-
-            } catch (e: Exception) {
-                runOnUiThread {
-                    cargando = false
-                    errorCarga = e.message
-                        ?: "No se pudo cargar el catálogo."
-                    mostrarInicio()
-                }
-            }
-        }.start()
-    }
-
-    private fun mostrarInicio() {
-        prepararPantalla("inicio")
-
-        contenido.addView(
+        encabezado.addView(
             texto(
-                "Tu próximo manga favorito",
-                24f,
-                texto,
+                titulo,
+                19f,
+                colorTexto,
                 true
             )
         )
 
-        contenido.addView(espacio(6))
+        return encabezado
+    }
 
-        contenido.addView(
-            texto(
-                "Catálogo de ShadeManga",
-                13f,
-                secundario
+    private fun mostrarPantallaCarga(mensaje: String) {
+        raiz.removeAllViews()
+
+        val etiqueta = texto(
+            mensaje,
+            17f,
+            colorTexto,
+            true
+        )
+
+        etiqueta.gravity = Gravity.CENTER
+
+        raiz.addView(
+            etiqueta,
+            LinearLayout.LayoutParams(
+                -1,
+                -1
             )
         )
+    }
 
-        contenido.addView(espacio(20))
+    private fun mostrarError(
+        mensaje: String,
+        error: Exception
+    ) {
+        runOnUiThread {
+            raiz.removeAllViews()
 
-        contenido.addView(
-            texto("Explorar mangas", 20f, texto, true)
-        )
-
-        contenido.addView(espacio())
-
-        when {
-            cargando -> {
-                contenido.addView(
-                    texto("Cargando catálogo...", 15f, secundario)
-                )
-
-                contenido.addView(
-                    ProgressBar(this),
-                    LinearLayout.LayoutParams(-2, -2).apply {
-                        gravity = Gravity.CENTER
-                    }
-                )
+            val panel = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                setPadding(dp(24), dp(24), dp(24), dp(24))
+                setBackgroundColor(fondo)
             }
 
-            errorCarga != null -> {
-                contenido.addView(
-                    texto(
-                        "No se pudo cargar el catálogo.\n$errorCarga",
-                        15f,
-                        secundario
-                    )
+            panel.addView(
+                texto(
+                    mensaje,
+                    18f,
+                    colorTexto,
+                    true
                 )
+            )
 
-                contenido.addView(espacio())
+            panel.addView(espacio(10))
 
-                contenido.addView(
-                    boton("Reintentar") {
-                        cargarCatalogo()
-                    }
+            panel.addView(
+                texto(
+                    error.message ?: "Error desconocido",
+                    13f,
+                    secundario
                 )
+            )
+
+            val volver = boton("Volver al catálogo")
+            volver.setOnClickListener {
+                mostrarInicio()
+                cargarCatalogo()
             }
 
-            series.isEmpty() -> {
-                contenido.addView(
-                    texto(
-                        "No hay mangas disponibles.",
-                        15f,
-                        secundario
-                    )
-                )
-            }
+            panel.addView(espacio(15))
+            panel.addView(volver)
 
-            else -> {
-                contenido.addView(
-                    texto(
-                        "${series.size} mangas · Contenido para adultos excluido",
-                        12f,
-                        secundario
-                    )
-                )
+            raiz.addView(
+                panel,
+                LinearLayout.LayoutParams(-1, -1)
+            )
+        }
+    }
 
-                contenido.addView(espacio())
-
-                for (i in series.indices) {
-                    agregarTarjetaSerie(i)
-                }
-
-                contenido.addView(espacio())
-
-                contenido.addView(
-                    boton("Actualizar catálogo") {
-                        cargarCatalogo()
-                    }
-                )
+    private fun texto(
+        contenidoTexto: String,
+        tamano: Float,
+        color: Int,
+        negrita: Boolean = false
+    ): TextView {
+        return TextView(this).apply {
+            text = contenidoTexto
+            textSize = tamano
+            setTextColor(color)
+            if (negrita) {
+                setTypeface(null, Typeface.BOLD)
             }
         }
     }
 
-    private fun agregarTarjetaSerie(indice: Int) {
-        val serie = series[indice]
-
-        val caja = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
+    private fun boton(etiqueta: String): TextView {
+        return TextView(this).apply {
+            text = etiqueta
+            textSize = 15f
+            setTextColor(colorTexto)
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(14, 14, 14, 14)
-            background = crearFondo(tarjeta)
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            background = crearFondo(tarjeta, 12f)
             isClickable = true
             isFocusable = true
         }
-
-        val portada = TextView(this).apply {
-            text = "漫"
-            textSize = 34f
-            setTextColor(texto)
-            gravity = Gravity.CENTER
-            background = crearFondo(acento, 14f)
-        }
-
-        caja.addView(
-            portada,
-            LinearLayout.LayoutParams(76, 96)
-        )
-
-        val detalles = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(14, 0, 0, 0)
-        }
-
-        detalles.addView(
-            texto(serie.titulo, 17f, texto, true)
-        )
-
-        detalles.addView(espacio(5))
-
-        detalles.addView(
-            texto(serie.genero, 12f, acento)
-        )
-
-        detalles.addView(espacio(5))
-
-        detalles.addView(
-            texto(
-                "${serie.capitulos} capítulos",
-                12f,
-                secundario
-            )
-        )
-
-        caja.addView(
-            detalles,
-            LinearLayout.LayoutParams(0, -2, 1f)
-        )
-
-        caja.setOnClickListener {
-            mostrarSerie(serie)
-        }
-
-        contenido.addView(
-            caja,
-            LinearLayout.LayoutParams(-1, -2).apply {
-                bottomMargin = 12
-            }
-        )
     }
 
-    private fun mostrarBusqueda() {
-        prepararPantalla("buscar")
-
-        contenido.addView(
-            texto("Buscar mangas", 24f, texto, true)
-        )
-
-        contenido.addView(espacio())
-
-        buscador = EditText(this).apply {
-            hint = "Título, género o autor..."
-            setHintTextColor(secundario)
-            setTextColor(texto)
-            textSize = 16f
-            isSingleLine = true
-            setPadding(14, 12, 14, 12)
-            background = crearFondo(tarjeta)
-        }
-
-        contenido.addView(
-            buscador,
-            LinearLayout.LayoutParams(-1, -2)
-        )
-
-        contenido.addView(espacio())
-
-        val resultados = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-
-        contenido.addView(resultados)
-
-        fun actualizarResultados(consulta: String) {
-            resultados.removeAllViews()
-
-            val coincidencias = series.filter { serie ->
-                serie.titulo.contains(consulta, true) ||
-                    serie.genero.contains(consulta, true) ||
-                    serie.autor.contains(consulta, true)
-            }
-
-            if (coincidencias.isEmpty()) {
-                resultados.addView(
-                    texto(
-                        "No se encontraron mangas.",
-                        15f,
-                        secundario
-                    )
-                )
-            } else {
-                for (serie in coincidencias) {
-                    resultados.addView(
-                        boton(
-                            "${serie.titulo}\n${serie.genero}"
-                        ) {
-                            mostrarSerie(serie)
-                        },
-                        LinearLayout.LayoutParams(-1, -2).apply {
-                            bottomMargin = 10
-                        }
-                    )
-                }
-            }
-        }
-
-        buscador.addTextChangedListener(
-            object : TextWatcher {
-                override fun beforeTextChanged(
-                    s: CharSequence?,
-                    start: Int,
-                    count: Int,
-                    after: Int
-                ) {}
-
-                override fun onTextChanged(
-                    s: CharSequence?,
-                    start: Int,
-                    before: Int,
-                    count: Int
-                ) {
-                    actualizarResultados(s?.toString().orEmpty())
-                }
-
-                override fun afterTextChanged(s: Editable?) {}
-            }
-        )
-
-        actualizarResultados("")
-    }
-
-    private fun mostrarSerie(serie: Serie) {
-        serieActual = serie
-
-        prepararPantalla("serie")
-
-        contenido.addView(
-            texto("‹ Volver al catálogo", 14f, acento).apply {
-                setOnClickListener {
-                    mostrarInicio()
-                }
-            }
-        )
-
-        contenido.addView(espacio(18))
-
-        contenido.addView(
-            texto(serie.titulo, 27f, texto, true)
-        )
-
-        contenido.addView(espacio(8))
-
-        contenido.addView(
-            texto(serie.genero, 14f, acento)
-        )
-
-        if (serie.autor.isNotBlank()) {
-            contenido.addView(espacio(6))
-
-            contenido.addView(
-                texto("Autor: ${serie.autor}", 14f, secundario)
+    private fun espacio(alto: Int): View {
+        return View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                1,
+                dp(alto)
             )
         }
-
-        contenido.addView(espacio(20))
-
-        contenido.addView(
-            texto("Capítulos", 21f, texto, true)
-        )
-
-        contenido.addView(espacio())
-
-        val estado = texto(
-            "Cargando capítulos...",
-            15f,
-            secundario
-        )
-
-        contenido.addView(estado)
-
-        Thread {
-            try {
-                val respuesta = consultarApi(
-                    "/api/series-locales/${serie.id}/capitulos"
-                )
-
-                val json = JSONArray(respuesta)
-                val capitulos = mutableListOf<Capitulo>()
-
-                for (i in 0 until json.length()) {
-                    val item = json.getJSONObject(i)
-
-                    if (!item.optBoolean("visible", true)) {
-                        continue
-                    }
-
-                    capitulos.add(
-                        Capitulo(
-                            id = item.optInt("id", 0),
-                            publicId = item.optString("publicId", ""),
-                            numero = item.optInt("numeroCapitulo", i + 1),
-                            titulo = item.optString("titulo", "")
-                                .takeUnless {
-                                    it.isBlank() || it == "null"
-                                },
-                            totalPaginas = item.optInt("totalPaginas", 0)
-                        )
-                    )
-                }
-
-                capitulos.sortWith(
-                    compareBy<Capitulo> { it.numero }
-                        .thenBy { it.id }
-                )
-
-                runOnUiThread {
-                    if (serieActual?.id != serie.id) return@runOnUiThread
-
-                    estado.text = ""
-
-                    if (capitulos.isEmpty()) {
-                        estado.text = "No hay capítulos visibles."
-                    } else {
-                        for (capitulo in capitulos) {
-                            val nombre = capitulo.titulo
-                                ?: "Capítulo ${capitulo.numero}"
-
-                            contenido.addView(
-                                boton(
-                                    "$nombre   ·   ${capitulo.totalPaginas} páginas   ›"
-                                ) {
-                                    mostrarLector(serie, capitulo)
-                                },
-                                LinearLayout.LayoutParams(-1, -2).apply {
-                                    bottomMargin = 8
-                                }
-                            )
-                        }
-                    }
-                }
-
-            } catch (e: Exception) {
-                runOnUiThread {
-                    if (serieActual?.id == serie.id) {
-                        estado.text =
-                            "No se pudieron cargar los capítulos: ${e.message}"
-                    }
-                }
-            }
-        }.start()
     }
 
-    private fun mostrarLector(
-        serie: Serie,
-        capitulo: Capitulo
-    ) {
-        capituloActual = capitulo
-        paginasActuales = emptyList()
-
-        prepararPantalla("lector")
-
-        contenido.addView(
-            texto("‹ ${serie.titulo}", 15f, acento).apply {
-                setOnClickListener {
-                    mostrarSerie(serie)
-                }
-            }
-        )
-
-        contenido.addView(espacio(12))
-
-        contenido.addView(
-            texto(
-                capitulo.titulo ?: "Capítulo ${capitulo.numero}",
-                22f,
-                texto,
-                true
-            )
-        )
-
-        contenido.addView(espacio(8))
-
-        val estado = texto(
-            "Cargando páginas...",
-            15f,
-            secundario
-        )
-
-        contenido.addView(estado)
-
-        val listaPaginas = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
+    private fun crearFondo(
+        color: Int,
+        radio: Float
+    ): GradientDrawable {
+        return GradientDrawable().apply {
+            setColor(color)
+            cornerRadius = dp(radio.toInt()).toFloat()
         }
+    }
 
-        contenido.addView(listaPaginas)
-
-        Thread {
-            try {
-                val respuesta = consultarApi(
-                    "/api/series-locales/${serie.id}/capitulos/${capitulo.id}/paginas"
-                )
-
-                val json = JSONObject(respuesta)
-                val arreglo = json.optJSONArray("paginas")
-                    ?: JSONArray()
-
-                val paginas = mutableListOf<String>()
-
-                for (i in 0 until arreglo.length()) {
-                    val url = arreglo.optString(i, "")
-
-                    if (
-                        url.startsWith("https://") &&
-                        url.contains("cdn.shademanga.com")
-                    ) {
-                        paginas.add(url)
-                    }
-                }
-
-                runOnUiThread {
-                    if (
-                        serieActual?.id != serie.id ||
-                        capituloActual?.id != capitulo.id ||
-                        pantallaActual != "lector"
-                    ) {
-                        return@runOnUiThread
-                    }
-
-                    paginasActuales = paginas
-                    estado.text = ""
-
-                    if (paginas.isEmpty()) {
-                        estado.text = "No se encontraron páginas."
-                    } else {
-                        estado.text =
-                            "${paginas.size} páginas · Deslizá hacia abajo para leer"
-
-                        for ((indice, url) in paginas.withIndex()) {
-                            val imagen = ImageView(this).apply {
-                                adjustViewBounds = true
-                                scaleType = ImageView.ScaleType.FIT_CENTER
-                                contentDescription =
-                                    "Página ${indice + 1}"
-                                setBackgroundColor(fondo)
-                            }
-
-                            listaPaginas.addView(
-                                imagen,
-                                LinearLayout.LayoutParams(-1, -2).apply {
-                                    bottomMargin = 4
-                                }
-                            )
-
-                            imagen.load(url) {
-                                crossfade(true)
-                                listener(
-                                    onError = { _, _ ->
-                                        imagen.contentDescription =
-                                            "No se pudo cargar la página ${indice + 1}"
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-
-            } catch (e: Exception) {
-                runOnUiThread {
-                    if (
-                        serieActual?.id == serie.id &&
-                        capituloActual?.id == capitulo.id &&
-                        pantallaActual == "lector"
-                    ) {
-                        estado.text =
-                            "No se pudieron cargar las páginas: ${e.message}"
-                    }
-                }
-            }
-        }.start()
+    private fun dp(valor: Int): Int {
+        return (valor * resources.displayMetrics.density)
+            .toInt()
     }
 }
