@@ -69,7 +69,10 @@ class MainActivity : Activity() {
         mostrarInicio()
     }
 
-    private fun crearFondo(color: Int, radio: Float = 18f): GradientDrawable {
+    private fun crearFondo(
+        color: Int,
+        radio: Float = 18f
+    ): GradientDrawable {
         return GradientDrawable().apply {
             setColor(color)
             cornerRadius = radio
@@ -86,6 +89,7 @@ class MainActivity : Activity() {
             text = valor
             textSize = tamano
             setTextColor(color)
+
             if (negrita) {
                 setTypeface(null, Typeface.BOLD)
             }
@@ -105,7 +109,10 @@ class MainActivity : Activity() {
             background = crearFondo(tarjeta)
             isClickable = true
             isFocusable = true
-            setOnClickListener { accion() }
+
+            setOnClickListener {
+                accion()
+            }
         }
     }
 
@@ -132,7 +139,12 @@ class MainActivity : Activity() {
             setPadding(16, 12, 16, 12)
         }
 
-        val marca = texto("ShadeManga", 23f, acento, true)
+        val marca = texto(
+            "ShadeManga",
+            23f,
+            acento,
+            true
+        )
 
         encabezado.addView(
             marca,
@@ -140,7 +152,9 @@ class MainActivity : Activity() {
         )
 
         encabezado.addView(
-            boton("Inicio") { mostrarInicio() }
+            boton("Inicio") {
+                mostrarInicio()
+            }
         )
 
         raiz.addView(encabezado)
@@ -153,6 +167,7 @@ class MainActivity : Activity() {
         }
 
         scroll.addView(contenido)
+
         raiz.addView(
             scroll,
             LinearLayout.LayoutParams(-1, 0, 1f)
@@ -165,8 +180,13 @@ class MainActivity : Activity() {
             setBackgroundColor(tarjeta)
         }
 
-        val inicio = boton("Inicio") { mostrarInicio() }
-        val buscar = boton("Buscar") { mostrarBusqueda() }
+        val inicio = boton("Inicio") {
+            mostrarInicio()
+        }
+
+        val buscar = boton("Buscar") {
+            mostrarBusqueda()
+        }
 
         navegacion.addView(
             inicio,
@@ -187,7 +207,12 @@ class MainActivity : Activity() {
         prepararPantalla("inicio")
 
         contenido.addView(
-            texto("Tu próximo manga favorito", 24f, texto, true)
+            texto(
+                "Tu próximo manga favorito",
+                24f,
+                texto,
+                true
+            )
         )
 
         contenido.addView(espacio(6))
@@ -203,7 +228,12 @@ class MainActivity : Activity() {
         contenido.addView(espacio(20))
 
         contenido.addView(
-            texto("Explorar series", 20f, texto, true)
+            texto(
+                "Explorar series",
+                20f,
+                texto,
+                true
+            )
         )
 
         contenido.addView(espacio())
@@ -254,13 +284,22 @@ class MainActivity : Activity() {
         }
 
         detalles.addView(
-            texto(serie.titulo, 17f, texto, true)
+            texto(
+                serie.titulo,
+                17f,
+                texto,
+                true
+            )
         )
 
         detalles.addView(espacio(5))
 
         detalles.addView(
-            texto(serie.genero, 12f, acento)
+            texto(
+                serie.genero,
+                12f,
+                acento
+            )
         )
 
         detalles.addView(espacio(5))
@@ -294,7 +333,12 @@ class MainActivity : Activity() {
         prepararPantalla("buscar")
 
         contenido.addView(
-            texto("Buscar series", 24f, texto, true)
+            texto(
+                "Buscar series",
+                24f,
+                texto,
+                true
+            )
         )
 
         contenido.addView(espacio())
@@ -327,6 +371,7 @@ class MainActivity : Activity() {
 
             val coincidencias = series.indices.filter { i ->
                 val serie = series[i]
+
                 serie.titulo.contains(consulta, true) ||
                     serie.genero.contains(consulta, true)
             }
@@ -359,6 +404,7 @@ class MainActivity : Activity() {
 
         buscador.addTextChangedListener(
             object : android.text.TextWatcher {
+
                 override fun beforeTextChanged(
                     s: CharSequence?,
                     start: Int,
@@ -372,7 +418,9 @@ class MainActivity : Activity() {
                     before: Int,
                     count: Int
                 ) {
-                    actualizarResultados(s?.toString().orEmpty())
+                    actualizarResultados(
+                        s?.toString().orEmpty()
+                    )
                 }
 
                 override fun afterTextChanged(
@@ -386,13 +434,20 @@ class MainActivity : Activity() {
 
     private fun mostrarSerie(indice: Int) {
         serieActual = indice
+
         val serie = series[indice]
 
         prepararPantalla("serie")
 
         contenido.addView(
-            texto("‹ Volver al catálogo", 14f, acento).apply {
-                setOnClickListener { mostrarInicio() }
+            texto(
+                "‹ Volver al catálogo",
+                14f,
+                acento
+            ).apply {
+                setOnClickListener {
+                    mostrarInicio()
+                }
             }
         )
 
@@ -412,25 +467,43 @@ class MainActivity : Activity() {
         contenido.addView(espacio(18))
 
         contenido.addView(
-            texto(serie.titulo, 27f, texto, true)
+            texto(
+                serie.titulo,
+                27f,
+                texto,
+                true
+            )
         )
 
         contenido.addView(espacio(6))
 
         contenido.addView(
-            texto(serie.genero, 14f, acento)
+            texto(
+                serie.genero,
+                14f,
+                acento
+            )
         )
 
         contenido.addView(espacio(16))
 
         contenido.addView(
-            texto(serie.descripcion, 16f, secundario)
+            texto(
+                serie.descripcion,
+                16f,
+                secundario
+            )
         )
 
         contenido.addView(espacio(20))
 
         contenido.addView(
-            texto("Capítulos", 21f, texto, true)
+            texto(
+                "Capítulos",
+                21f,
+                texto,
+                true
+            )
         )
 
         contenido.addView(espacio())
@@ -453,15 +526,26 @@ class MainActivity : Activity() {
         prepararPantalla("lector")
 
         contenido.addView(
-            texto("‹ ${series[serieActual].titulo}", 16f, acento).apply {
-                setOnClickListener { mostrarSerie(serieActual) }
+            texto(
+                "‹ ${series[serieActual].titulo}",
+                16f,
+                acento
+            ).apply {
+                setOnClickListener {
+                    mostrarSerie(serieActual)
+                }
             }
         )
 
         contenido.addView(espacio(16))
 
         contenido.addView(
-            texto("Capítulo $capitulo", 23f, texto, true)
+            texto(
+                "Capítulo $capitulo",
+                23f,
+                texto,
+                true
+            )
         )
 
         contenido.addView(espacio())
@@ -495,15 +579,9 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
         }
 
-        val anterior = boton("‹ Anterior") {
-            if (paginaActual > 1) paginaActual--
-            actualizar()
-        }
-
-        val siguiente = boton("Siguiente ›") {
-            paginaActual++
-            actualizar()
-        }
+        // Creamos los botones antes de asignar sus acciones.
+        val anterior = boton("‹ Anterior") {}
+        val siguiente = boton("Siguiente ›") {}
 
         controles.addView(
             anterior,
@@ -527,28 +605,29 @@ class MainActivity : Activity() {
             )
         )
 
+        // Esta función se declara antes de utilizarla.
         fun actualizar() {
             aviso.text = "Página de prueba\n\n漫"
             aviso.textSize = 36f
             indicador.text = "Página $paginaActual"
-            anterior.alpha = if (paginaActual == 1) 0.4f else 1f
+
+            anterior.alpha =
+                if (paginaActual == 1) 0.4f else 1f
         }
 
-        fun configurarAcciones() {
-            anterior.setOnClickListener {
-                if (paginaActual > 1) {
-                    paginaActual--
-                    actualizar()
-                }
-            }
-
-            siguiente.setOnClickListener {
-                paginaActual++
+        // Ahora los botones pueden llamar a actualizar().
+        anterior.setOnClickListener {
+            if (paginaActual > 1) {
+                paginaActual--
                 actualizar()
             }
         }
 
-        configurarAcciones()
+        siguiente.setOnClickListener {
+            paginaActual++
+            actualizar()
+        }
+
         actualizar()
     }
 }
