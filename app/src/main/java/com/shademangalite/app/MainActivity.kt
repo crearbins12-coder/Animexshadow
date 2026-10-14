@@ -168,6 +168,7 @@ private fun crearEncabezado() {
 // CATÁLOGO
 // =========================================================
 
+
 private fun cargarCatalogo() {
 mostrarPantallaCarga("Cargando catálogo de mangas...")
 
@@ -175,69 +176,15 @@ mostrarPantallaCarga("Cargando catálogo de mangas...")
         try {
             val mangasPorId = linkedMapOf<String, Serie>()
 
-            // Consultamos varias páginas de la API.
-            // La carga se realiza en segundo plano.
-            for (pagina in 1..30) {
-                val ruta =
-                    "/api/series-locales?pageSize=100&page=$pagina"
+            // Cargamos primero una sola página para mostrar
+            // el catálogo rápidamente.
+            val primeraRespuesta = consultarApi(
+                "/api/series-locales?pageSize=100&page=1"
+            )
 
-                val respuesta = consultarApi(ruta)
-                val array = JSONArray(respuesta)
+            val primeraPagina = JSONArray(primeraRespuesta)
 
-                var mangasNuevos = 0
-
-                for (i in 0 until array.length()) {
-                    val objeto = array.optJSONObject(i) ?: continue
-
-                    if (objeto.optBoolean("esMayorDeEdad", false)) {
-                        continue
-                    }
-
-                    val id = objeto.optString("id", "")
-                    if (id.isBlank() || id == "null") continue
-
-                    // Evitamos duplicados.
-                    if (mangasPorId.containsKey(id)) continue
-
-                    mangasPorId[id] = Serie(
-                        id = id,
-                        publicId = objeto.optString("publicId", ""),
-                        titulo = objeto.optString(
-                            "titulo",
-                            "Manga sin título"
-                        ),
-                        autor = objeto.optString(
-                            "autor",
-                            "Autor desconocido"
-                        ).let {
-                            if (it == "null") "Autor desconocido" else it
-                        },
-                        portadaUrl = objeto.optString(
-                            "portadaUrl",
-                            ""
-                        ).let {
-                            if (it == "null") "" else it
-                        },
-                        capitulos = objeto.optInt(
-                            "totalCapitulos",
-                            0
-                        ),
-                        genero = obtenerGeneros(
-                            objeto.opt("generos")
-                        )
-                    )
-
-                    mangasNuevos++
-                }
-
-                // Si una página no aporta mangas nuevos,
-                // dejamos de consultar para evitar repetir resultados.
-                if (mangasNuevos == 0) break
-
-                // Si la API devuelve menos de 100 elementos,
-                // probablemente llegamos al final del catálogo.
-                if (array.length() < 100) break
-            }
+            agregarMangasAlCatalogo(primeraPagina, mangasPorId)
 
             runOnUiThread {
                 if (isFinishing || isDestroyed) {
@@ -247,6 +194,41 @@ mostrarPantallaCarga("Cargando catálogo de mangas...")
                 catalogo = mangasPorId.values.toMutableList()
                 mostrarCatalogoFiltrado()
             }
+
+            // Después intentamos ampliar el catálogo.
+            for (pagina in 2..10) {
+                try {
+                    val respuesta = consultarApi(
+                        "/api/series-locales?pageSize=100&page=$pagina"
+                    )
+
+                    val array = JSONArray(respuesta)
+                    val cantidadAnterior = mangasPorId.size
+
+                    agregarMangasAlCatalogo(array, mangasPorId)
+
+                    if (mangasPorId.size == cantidadAnterior) {
+                        break
+                    }
+
+                    runOnUiThread {
+                        if (isFinishing || isDestroyed) {
+                            return@runOnUiThread
+                        }
+
+                        catalogo = mangasPorId.values.toMutableList()
+                        mostrarCatalogoFiltrado()
+                    }
+
+                    if (array.length() < 100) {
+                        break
+                    }
+                } catch (_: Exception) {
+                    // Si una página falla, conservamos
+                    // los mangas que ya cargamos.
+                    break
+                }
+            }
         } catch (e: Exception) {
             runOnUiThread {
                 if (isFinishing || isDestroyed) {
@@ -254,7 +236,7 @@ mostrarPantallaCarga("Cargando catálogo de mangas...")
                 }
 
                 mostrarError(
-                    "No se pudo cargar el catálogo completo.\n\n" +
+                    "No se pudo cargar el catálogo.\n\n" +
                         "${e.javaClass.simpleName}: " +
                         (e.message ?: "Error desconocido")
                 )
@@ -263,6 +245,39 @@ mostrarPantallaCarga("Cargando catálogo de mangas...")
     }.start()
 }
 
+private fun agregarMangasAlCatalogo(
+    array: JSONArray,
+    mangasPorId: LinkedHashMap<String, Serie>
+) {
+    for (i in 0 until array.length()) {
+        val objeto = array.optJSONObject(i) ?: continue
+
+        if (objeto.optBoolean("esMayorDeEdad", false)) {
+            continue
+        }
+
+        val id = objeto.optString("id", "")
+        if (id.isBlank() || id == "null") continue
+        if (mangasPorId.containsKey(id)) continue
+
+        val autor = objeto.optString("autor", "")
+        val portada = objeto.optString("portadaUrl", "")
+
+        mangasPorId[id] = Serie(
+            id = id,
+            publicId = objeto.optString("publicId", ""),
+            titulo = objeto.optString("titulo", "Manga sin título"),
+            autor = if (autor == "null" || autor.isBlank()) {
+                "Autor desconocido"
+            } else {
+                autor
+            },
+            portadaUrl = if (portada == "null") "" else portada,
+            capitulos = objeto.optInt("totalCapitulos", 0),
+            genero = obtenerGeneros(objeto.opt("generos"))
+        )
+    }
+}
 private fun mostrarCatalogoFiltrado() {
     contenido.removeAllViews()
 
