@@ -26,10 +26,11 @@ jobs:
 
       - name: Configure Android SDK
         uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK components
-        run: |
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+        with:
+          packages: |
+            platform-tools
+            platforms;android-35
+            build-tools;35.0.0
 
       - name: Configure Gradle
         uses: gradle/actions/setup-gradle@v4
