@@ -443,20 +443,40 @@ private fun cargarPortada(
     val uri = Uri.parse(direccion)
     if (uri.scheme != "https" || uri.host.isNullOrBlank()) return
 
-    imagen.load(direccion) {
-        crossfade(false)
+    val maxIntentos = 3
 
-        memoryCachePolicy(CachePolicy.ENABLED)
-        diskCachePolicy(CachePolicy.ENABLED)
+    fun cargarConIntento(numeroIntento: Int) {
+        imagen.load(direccion) {
+            crossfade(false)
 
-        placeholder(crearFondo(colorPortada, radioDp))
-        error(crearFondo(colorErrorPortada, radioDp))
+            memoryCachePolicy(CachePolicy.ENABLED)
+            diskCachePolicy(CachePolicy.ENABLED)
 
-        size(
-            dp(132).coerceAtLeast(1),
-            dp(altoDp).coerceAtLeast(1)
-        )
+            placeholder(crearFondo(colorPortada, radioDp))
+            error(crearFondo(colorErrorPortada, radioDp))
+
+            size(
+                dp(132).coerceAtLeast(1),
+                dp(altoDp).coerceAtLeast(1)
+            )
+
+            listener(
+                onError = { _, _ ->
+                    if (numeroIntento < maxIntentos) {
+                        imagen.postDelayed({
+                            // Evita reintentar si la vista ya no muestra esta serie.
+                            if (imagen.getTag(R.id.tag_portada_url) == direccion) {
+                                cargarConIntento(numeroIntento + 1)
+                            }
+                        }, 700L * numeroIntento)
+                    }
+                }
+            )
+        }
     }
+
+    imagen.setTag(R.id.tag_portada_url, direccion)
+    cargarConIntento(1)
 }
 
 // =====================================================
