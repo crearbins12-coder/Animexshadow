@@ -497,12 +497,12 @@ class MainActivity : Activity() {
 
         val anterior = boton("‹ Anterior") {
             if (paginaActual > 1) paginaActual--
-            actualizarPagina()
+            actualizar()
         }
 
         val siguiente = boton("Siguiente ›") {
             paginaActual++
-            actualizarPagina()
+            actualizar()
         }
 
         controles.addView(
