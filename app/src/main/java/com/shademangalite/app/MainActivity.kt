@@ -67,6 +67,10 @@ class MainActivity : Activity() {
     private var cargandoMasCatalogo = false
     private var hayMasCatalogo = true
 
+    // Control de la carga infinita.
+    private var errorCargaCatalogo = false
+    private var cargaInfinitaActiva = true
+
     private val mangasVisiblesPorCategoria =
         mutableMapOf<String, Int>()
 
@@ -138,12 +142,13 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 dp(46)
             )
-            parametros.topMargin = dp(12)
 
+            parametros.topMargin = dp(12)
             encabezado.addView(buscador, parametros)
 
             buscador.addTextChangedListener(
                 object : TextWatcher {
+
                     override fun beforeTextChanged(
                         s: CharSequence?,
                         start: Int,
@@ -162,14 +167,49 @@ class MainActivity : Activity() {
                         mostrarCatalogoFiltrado()
                     }
 
-                    override fun afterTextChanged(s: Editable?) = Unit
+                    override fun afterTextChanged(
+                        s: Editable?
+                    ) = Unit
                 }
             )
         }
 
         raiz.addView(encabezado)
 
-        val scroll = ScrollView(this).apply {
+        // Detectar cuando el usuario se acerca al final.
+        val scroll = object : ScrollView(this) {
+
+            override fun onScrollChanged(
+                l: Int,
+                t: Int,
+                oldl: Int,
+                oldt: Int
+            ) {
+                super.onScrollChanged(l, t, oldl, oldt)
+
+                if (
+                    !cargaInfinitaActiva ||
+                    !mostrandoTodos ||
+                    filtroActual.isNotBlank() ||
+                    !hayMasCatalogo ||
+                    cargandoMasCatalogo ||
+                    errorCargaCatalogo ||
+                    childCount == 0
+                ) {
+                    return
+                }
+
+                val vistaInterior = getChildAt(0)
+
+                val distanciaAlFinal =
+                    vistaInterior.bottom - (height + scrollY)
+
+                // Cargar la siguiente página al acercarse al final.
+                if (distanciaAlFinal <= dp(500)) {
+                    cargarMasCatalogo()
+                }
+            }
+        }.apply {
             isFillViewport = true
             clipToPadding = false
         }
@@ -202,6 +242,7 @@ class MainActivity : Activity() {
 
         cargandoMasCatalogo = false
         hayMasCatalogo = true
+        errorCargaCatalogo = false
         paginaCatalogoActual = 1
 
         mostrarPantallaCarga("Cargando mangas...")
@@ -226,13 +267,14 @@ class MainActivity : Activity() {
                     catalogo = resultado
                     paginaCatalogoActual = 1
 
-                    // Contar antes de filtrar contenido y duplicados.
                     hayMasCatalogo =
                         cantidadOriginal >= tamanoPaginaCatalogo
 
                     cargandoMasCatalogo = false
+                    errorCargaCatalogo = false
 
                     mangasVisiblesPorCategoria.clear()
+
                     mostrarCatalogoFiltrado()
                 }
             } catch (e: Exception) {
@@ -244,6 +286,7 @@ class MainActivity : Activity() {
                     ) return@runOnUiThread
 
                     cargandoMasCatalogo = false
+                    errorCargaCatalogo = false
 
                     mostrarError(
                         "No se pudo cargar el catálogo.\n\n" +
@@ -255,16 +298,21 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun analizarSeries(array: JSONArray): MutableList<Serie> {
+    private fun analizarSeries(
+        array: JSONArray
+    ): MutableList<Serie> {
         val resultado = mutableListOf<Serie>()
 
         for (i in 0 until array.length()) {
             val objeto = array.optJSONObject(i) ?: continue
 
             // No mostrar contenido para adultos.
-            if (objeto.optBoolean("esMayorDeEdad", false)) continue
+            if (objeto.optBoolean("esMayorDeEdad", false)) {
+                continue
+            }
 
             val id = objeto.optString("id", "")
+
             if (id.isBlank() || id == "null") continue
 
             val autor = objeto.optString("autor", "")
@@ -285,9 +333,18 @@ class MainActivity : Activity() {
                     } else {
                         autor
                     },
-                    portadaUrl = if (portada == "null") "" else portada,
-                    capitulos = objeto.optInt("totalCapitulos", 0),
-                    genero = obtenerGeneros(objeto.opt("generos"))
+                    portadaUrl = if (portada == "null") {
+                        ""
+                    } else {
+                        portada
+                    },
+                    capitulos = objeto.optInt(
+                        "totalCapitulos",
+                        0
+                    ),
+                    genero = obtenerGeneros(
+                        objeto.opt("generos")
+                    )
                 )
             )
         }
@@ -300,9 +357,16 @@ class MainActivity : Activity() {
     // =====================================================
 
     private fun cargarMasCatalogo() {
-        if (cargandoMasCatalogo || !hayMasCatalogo) return
+        if (
+            cargandoMasCatalogo ||
+            !hayMasCatalogo ||
+            errorCargaCatalogo
+        ) {
+            return
+        }
 
         cargandoMasCatalogo = true
+
         mostrarCatalogoFiltrado()
 
         val siguientePagina = paginaCatalogoActual + 1
@@ -328,19 +392,32 @@ class MainActivity : Activity() {
                     val idsExistentes =
                         catalogo.map { it.id }.toMutableSet()
 
+                    var cantidadAgregada = 0
+
                     for (serie in nuevos) {
                         if (idsExistentes.add(serie.id)) {
                             catalogo.add(serie)
+                            cantidadAgregada++
                         }
                     }
 
                     paginaCatalogoActual = siguientePagina
 
-                    // Usar el tamaño original de la respuesta.
                     hayMasCatalogo =
                         cantidadOriginal >= tamanoPaginaCatalogo
 
                     cargandoMasCatalogo = false
+                    errorCargaCatalogo = false
+
+                    // Si la página no trajo mangas nuevos, seguimos
+                    // mostrando los controles para continuar manualmente.
+                    if (
+                        cantidadAgregada == 0 &&
+                        hayMasCatalogo
+                    ) {
+                        errorCargaCatalogo = true
+                    }
+
                     mostrarCatalogoFiltrado()
                 }
             } catch (e: Exception) {
@@ -352,15 +429,29 @@ class MainActivity : Activity() {
                     ) return@runOnUiThread
 
                     cargandoMasCatalogo = false
+                    errorCargaCatalogo = true
+
                     mostrarCatalogoFiltrado()
 
                     contenido.addView(
                         texto(
-                            "Error al cargar más mangas: ${e.message}",
+                            "No se pudieron cargar más mangas.\n" +
+                                (e.message ?: "Error desconocido"),
                             13f,
                             false
                         ).apply {
-                            setTextColor(Color.rgb(255, 140, 150))
+                            setTextColor(
+                                Color.rgb(255, 140, 150)
+                            )
+                        }
+                    )
+
+                    espacio(6)
+
+                    contenido.addView(
+                        boton("Reintentar carga") {
+                            errorCargaCatalogo = false
+                            cargarMasCatalogo()
                         }
                     )
                 }
@@ -376,9 +467,18 @@ class MainActivity : Activity() {
         contenido.removeAllViews()
 
         val lista = catalogo.filter {
-            it.titulo.contains(filtroActual, ignoreCase = true) ||
-                it.autor.contains(filtroActual, ignoreCase = true) ||
-                it.genero.contains(filtroActual, ignoreCase = true)
+            it.titulo.contains(
+                filtroActual,
+                ignoreCase = true
+            ) ||
+                it.autor.contains(
+                    filtroActual,
+                    ignoreCase = true
+                ) ||
+                it.genero.contains(
+                    filtroActual,
+                    ignoreCase = true
+                )
         }
 
         if (catalogo.isEmpty()) {
@@ -416,7 +516,8 @@ class MainActivity : Activity() {
 
         espacio(16)
 
-        val categorias = linkedMapOf<String, MutableList<Serie>>()
+        val categorias =
+            linkedMapOf<String, MutableList<Serie>>()
 
         for (serie in lista) {
             val generos = serie.genero
@@ -425,12 +526,14 @@ class MainActivity : Activity() {
                 .filter { it.isNotBlank() }
 
             if (generos.isEmpty()) {
-                categorias.getOrPut("Otros") { mutableListOf() }
-                    .add(serie)
+                categorias.getOrPut("Otros") {
+                    mutableListOf()
+                }.add(serie)
             } else {
                 for (genero in generos) {
-                    categorias.getOrPut(genero) { mutableListOf() }
-                        .add(serie)
+                    categorias.getOrPut(genero) {
+                        mutableListOf()
+                    }.add(serie)
                 }
             }
         }
@@ -509,7 +612,9 @@ class MainActivity : Activity() {
         )
     }
 
-    private fun crearTarjetaCarrusel(serie: Serie): View {
+    private fun crearTarjetaCarrusel(
+        serie: Serie
+    ): View {
         val caja = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.TOP
@@ -517,13 +622,18 @@ class MainActivity : Activity() {
             background = crearFondo(tarjeta, 12)
             isClickable = true
             isFocusable = true
-            setOnClickListener { mostrarSerie(serie) }
+            setOnClickListener {
+                mostrarSerie(serie)
+            }
         }
 
         val portada = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
             contentDescription = "Portada de ${serie.titulo}"
-            background = crearFondo(Color.rgb(48, 43, 58), 8)
+            background = crearFondo(
+                Color.rgb(48, 43, 58),
+                8
+            )
         }
 
         caja.addView(
@@ -548,7 +658,11 @@ class MainActivity : Activity() {
         )
 
         caja.addView(
-            texto("${serie.capitulos} capítulos", 10f, false).apply {
+            texto(
+                "${serie.capitulos} capítulos",
+                10f,
+                false
+            ).apply {
                 setTextColor(textoSecundario)
                 setPadding(dp(2), dp(4), dp(2), 0)
             }
@@ -561,17 +675,27 @@ class MainActivity : Activity() {
     // BUSCADOR
     // =====================================================
 
-    private fun mostrarResultadosBusqueda(lista: List<Serie>) {
-        contenido.addView(texto("Resultados", 22f, true))
+    private fun mostrarResultadosBusqueda(
+        lista: List<Serie>
+    ) {
+        contenido.addView(
+            texto("Resultados", 22f, true)
+        )
+
         espacio(6)
 
         contenido.addView(
-            texto("${lista.size} mangas encontrados", 13f, false).apply {
+            texto(
+                "${lista.size} mangas encontrados",
+                13f,
+                false
+            ).apply {
                 setTextColor(textoSecundario)
             }
         )
 
         espacio(10)
+
         agregarCuadricula(lista.take(resultadosVisibles))
 
         if (lista.size > resultadosVisibles) {
@@ -590,12 +714,18 @@ class MainActivity : Activity() {
 
             contenido.addView(
                 boton(
-                    if (cargandoMasCatalogo) {
-                        "Cargando catálogo..."
-                    } else {
-                        "Buscar también en más mangas"
+                    when {
+                        cargandoMasCatalogo ->
+                            "Cargando catálogo..."
+
+                        errorCargaCatalogo ->
+                            "Reintentar carga de mangas"
+
+                        else ->
+                            "Buscar también en más mangas"
                     }
                 ) {
+                    errorCargaCatalogo = false
                     cargarMasCatalogo()
                 }
             )
@@ -603,7 +733,7 @@ class MainActivity : Activity() {
     }
 
     // =====================================================
-    // TODOS LOS MANGAS
+    // TODOS LOS MANGAS: CARGA INFINITA
     // =====================================================
 
     private fun abrirTodosLosMangas() {
@@ -614,7 +744,9 @@ class MainActivity : Activity() {
         mostrarCatalogoFiltrado()
     }
 
-    private fun mostrarTodosLosMangas(lista: List<Serie>) {
+    private fun mostrarTodosLosMangas(
+        lista: List<Serie>
+    ) {
         contenido.addView(
             boton("← Volver al inicio") {
                 mostrarInicio()
@@ -624,52 +756,94 @@ class MainActivity : Activity() {
         espacio(12)
 
         contenido.addView(
-            texto("${lista.size} mangas cargados", 16f, false).apply {
+            texto(
+                "${lista.size} mangas cargados",
+                16f,
+                false
+            ).apply {
                 setTextColor(textoSecundario)
             }
         )
 
         espacio(10)
-        agregarCuadricula(lista.take(resultadosVisibles))
 
-        if (lista.size > resultadosVisibles) {
-            espacio(8)
+        // Mostrar todos los mangas de las páginas ya descargadas.
+        // El ScrollView solicitará más al acercarse al final.
+        agregarCuadricula(lista)
 
-            contenido.addView(
-                boton("Mostrar 21 más") {
-                    resultadosVisibles += 21
-                    mostrarCatalogoFiltrado()
-                }
-            )
-        }
+        espacio(8)
 
-        if (hayMasCatalogo || cargandoMasCatalogo) {
-            espacio(8)
-
-            contenido.addView(
-                boton(
-                    if (cargandoMasCatalogo) {
-                        "Cargando más mangas..."
-                    } else {
-                        "⬇ Cargar más mangas"
+        when {
+            cargandoMasCatalogo -> {
+                contenido.addView(
+                    texto(
+                        "⏳ Cargando más mangas...",
+                        14f,
+                        false
+                    ).apply {
+                        gravity = Gravity.CENTER
+                        setTextColor(acento)
                     }
-                ) {
-                    cargarMasCatalogo()
-                }
-            )
-        } else {
-            espacio(8)
+                )
+            }
 
-            contenido.addView(
-                texto(
-                    "Llegaste al final de los mangas disponibles.",
-                    13f,
-                    false
-                ).apply {
-                    gravity = Gravity.CENTER
-                    setTextColor(textoSecundario)
-                }
-            )
+            errorCargaCatalogo -> {
+                contenido.addView(
+                    texto(
+                        "No se pudo continuar la carga automática.",
+                        13f,
+                        false
+                    ).apply {
+                        gravity = Gravity.CENTER
+                        setTextColor(textoSecundario)
+                    }
+                )
+
+                espacio(6)
+
+                contenido.addView(
+                    boton("Reintentar carga") {
+                        errorCargaCatalogo = false
+                        cargarMasCatalogo()
+                    }
+                )
+            }
+
+            hayMasCatalogo -> {
+                contenido.addView(
+                    texto(
+                        "Deslizá hacia abajo para cargar más mangas.",
+                        12f,
+                        false
+                    ).apply {
+                        gravity = Gravity.CENTER
+                        setTextColor(textoSecundario)
+                    }
+                )
+
+                espacio(6)
+
+                // También se conserva una forma de carga manual.
+                contenido.addView(
+                    boton("⬇ Cargar más mangas") {
+                        errorCargaCatalogo = false
+                        cargarMasCatalogo()
+                    }
+                )
+            }
+
+            else -> {
+                contenido.addView(
+                    texto(
+                        "Llegaste al final de los mangas disponibles.",
+                        13f,
+                        false
+                    ).apply {
+                        gravity = Gravity.CENTER
+                        setTextColor(textoSecundario)
+                    }
+                )
+            }
         }
     }
 
@@ -677,7 +851,9 @@ class MainActivity : Activity() {
     // CUADRÍCULA DE TRES COLUMNAS
     // =====================================================
 
-    private fun agregarCuadricula(lista: List<Serie>) {
+    private fun agregarCuadricula(
+        lista: List<Serie>
+    ) {
         val columnas = 3
         var indice = 0
 
@@ -691,13 +867,18 @@ class MainActivity : Activity() {
                 if (indice >= lista.size) {
                     fila.addView(
                         View(this),
-                        LinearLayout.LayoutParams(0, 1, 1f)
+                        LinearLayout.LayoutParams(
+                            0,
+                            1,
+                            1f
+                        )
                     )
                     continue
                 }
 
                 val serie = lista[indice++]
-                val tarjetaVista = crearTarjetaCuadricula(serie)
+                val tarjetaVista =
+                    crearTarjetaCuadricula(serie)
 
                 val parametros = LinearLayout.LayoutParams(
                     0,
@@ -725,7 +906,9 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun crearTarjetaCuadricula(serie: Serie): View {
+    private fun crearTarjetaCuadricula(
+        serie: Serie
+    ): View {
         val caja = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.TOP
@@ -733,7 +916,9 @@ class MainActivity : Activity() {
             background = crearFondo(tarjeta, 10)
             isClickable = true
             isFocusable = true
-            setOnClickListener { mostrarSerie(serie) }
+            setOnClickListener {
+                mostrarSerie(serie)
+            }
         }
 
         val portada = ImageView(this).apply {
@@ -764,7 +949,11 @@ class MainActivity : Activity() {
         )
 
         caja.addView(
-            texto("${serie.capitulos} capítulos", 10f, false).apply {
+            texto(
+                "${serie.capitulos} capítulos",
+                10f,
+                false
+            ).apply {
                 setTextColor(textoSecundario)
                 setPadding(dp(2), dp(3), dp(2), 0)
             }
@@ -793,25 +982,34 @@ class MainActivity : Activity() {
                 val resultado = mutableListOf<Capitulo>()
 
                 for (i in 0 until array.length()) {
-                    val objeto = array.optJSONObject(i) ?: continue
+                    val objeto =
+                        array.optJSONObject(i) ?: continue
 
-                    if (!objeto.optBoolean("visible", true)) continue
+                    if (!objeto.optBoolean("visible", true)) {
+                        continue
+                    }
 
                     val id = objeto.optString("id", "")
+
                     if (id.isBlank() || id == "null") continue
 
                     resultado.add(
                         Capitulo(
                             id = id,
-                            publicId = objeto.optString("publicId", ""),
+                            publicId = objeto.optString(
+                                "publicId",
+                                ""
+                            ),
                             numero = objeto.optString(
                                 "numeroCapitulo",
                                 "${i + 1}"
                             ),
-                            titulo = objeto.optString("titulo", "")
-                                .let {
-                                    if (it == "null") "" else it
-                                },
+                            titulo = objeto.optString(
+                                "titulo",
+                                ""
+                            ).let {
+                                if (it == "null") "" else it
+                            },
                             totalPaginas = objeto.optInt(
                                 "totalPaginas",
                                 0
@@ -828,7 +1026,10 @@ class MainActivity : Activity() {
                     ) return@runOnUiThread
 
                     capitulosActuales = resultado
-                    mostrarListaCapitulos(serie, resultado)
+                    mostrarListaCapitulos(
+                        serie,
+                        resultado
+                    )
                 }
             } catch (e: Exception) {
                 runOnUiThread {
@@ -863,11 +1064,19 @@ class MainActivity : Activity() {
         )
 
         espacio(12)
-        contenido.addView(texto(serie.titulo, 22f, true))
+
+        contenido.addView(
+            texto(serie.titulo, 22f, true)
+        )
+
         espacio(6)
 
         contenido.addView(
-            texto("Autor: ${serie.autor}", 14f, false).apply {
+            texto(
+                "Autor: ${serie.autor}",
+                14f,
+                false
+            ).apply {
                 setTextColor(textoSecundario)
             }
         )
@@ -875,38 +1084,56 @@ class MainActivity : Activity() {
         espacio(14)
 
         contenido.addView(
-            texto("Capítulos (${capitulos.size})", 19f, true)
+            texto(
+                "Capítulos (${capitulos.size})",
+                19f,
+                true
+            )
         )
 
         espacio(8)
 
         if (capitulos.isEmpty()) {
             contenido.addView(
-                texto("No hay capítulos disponibles.", 15f, false)
+                texto(
+                    "No hay capítulos disponibles.",
+                    15f,
+                    false
+                )
             )
             return
         }
 
         for (capitulo in capitulos) {
-            val nombre = "Capítulo ${capitulo.numero}" +
-                if (capitulo.titulo.isNotBlank()) {
-                    " — ${capitulo.titulo}"
-                } else {
-                    ""
-                }
+            val nombre =
+                "Capítulo ${capitulo.numero}" +
+                    if (capitulo.titulo.isNotBlank()) {
+                        " — ${capitulo.titulo}"
+                    } else {
+                        ""
+                    }
 
             val elemento = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(dp(14), dp(14), dp(14), dp(14))
+                setPadding(
+                    dp(14),
+                    dp(14),
+                    dp(14),
+                    dp(14)
+                )
                 background = crearFondo(tarjeta, 12)
                 isClickable = true
                 isFocusable = true
+
                 setOnClickListener {
                     mostrarLector(serie, capitulo)
                 }
             }
 
-            elemento.addView(texto(nombre, 15f, true))
+            elemento.addView(
+                texto(nombre, 15f, true)
+            )
+
             espacioEn(elemento, 5)
 
             elemento.addView(
@@ -925,6 +1152,7 @@ class MainActivity : Activity() {
             )
 
             parametros.bottomMargin = dp(8)
+
             contenido.addView(elemento, parametros)
         }
     }
@@ -933,7 +1161,10 @@ class MainActivity : Activity() {
     // LECTOR
     // =====================================================
 
-    private fun mostrarLector(serie: Serie, capitulo: Capitulo) {
+    private fun mostrarLector(
+        serie: Serie,
+        capitulo: Capitulo
+    ) {
         mostrarPantallaCarga("Cargando páginas...")
 
         val generacion = generacionCatalogo
@@ -946,13 +1177,17 @@ class MainActivity : Activity() {
                 )
 
                 val objeto = JSONObject(respuesta)
+
                 val array = objeto.optJSONArray("paginas")
-                    ?: throw Exception("La API no devolvió páginas.")
+                    ?: throw Exception(
+                        "La API no devolvió páginas."
+                    )
 
                 val paginas = mutableListOf<String>()
 
                 for (i in 0 until array.length()) {
-                    val direccion = array.optString(i, "").trim()
+                    val direccion =
+                        array.optString(i, "").trim()
 
                     try {
                         val url = URL(direccion)
@@ -975,7 +1210,11 @@ class MainActivity : Activity() {
                         generacion != generacionCatalogo
                     ) return@runOnUiThread
 
-                    mostrarPaginas(serie, capitulo, paginas)
+                    mostrarPaginas(
+                        serie,
+                        capitulo,
+                        paginas
+                    )
                 }
             } catch (e: Exception) {
                 runOnUiThread {
@@ -985,7 +1224,9 @@ class MainActivity : Activity() {
                         generacion != generacionCatalogo
                     ) return@runOnUiThread
 
-                    mostrarError("Error al cargar páginas: ${e.message}")
+                    mostrarError(
+                        "Error al cargar páginas: ${e.message}"
+                    )
                 }
             }
         }
@@ -1000,7 +1241,10 @@ class MainActivity : Activity() {
 
         contenido.addView(
             boton("← Volver a capítulos") {
-                mostrarListaCapitulos(serie, capitulosActuales)
+                mostrarListaCapitulos(
+                    serie,
+                    capitulosActuales
+                )
             }
         )
 
@@ -1028,12 +1272,17 @@ class MainActivity : Activity() {
         }
 
         contenido.addView(
-            texto("${paginas.size} páginas", 13f, false).apply {
+            texto(
+                "${paginas.size} páginas",
+                13f,
+                false
+            ).apply {
                 setTextColor(textoSecundario)
             }
         )
 
         espacio(8)
+
         mostrarLotePaginas(paginas, 0)
     }
 
@@ -1067,10 +1316,13 @@ class MainActivity : Activity() {
         if (fin < paginas.size) {
             contenido.addView(
                 boton(
-                    "Cargar siguientes páginas (${fin}/${paginas.size})"
+                    "Cargar siguientes páginas " +
+                        "(${fin}/${paginas.size})"
                 ) {
-                    // Quitar únicamente el botón de carga.
-                    contenido.removeViewAt(contenido.childCount - 1)
+                    contenido.removeViewAt(
+                        contenido.childCount - 1
+                    )
+
                     mostrarLotePaginas(paginas, fin)
                 }
             )
@@ -1090,7 +1342,8 @@ class MainActivity : Activity() {
             }
         )
 
-        val conexion = url.openConnection() as HttpURLConnection
+        val conexion =
+            url.openConnection() as HttpURLConnection
 
         try {
             conexion.requestMethod = "GET"
@@ -1138,7 +1391,8 @@ class MainActivity : Activity() {
                 val lista = mutableListOf<String>()
 
                 for (i in 0 until valor.length()) {
-                    val genero = valor.optString(i, "").trim()
+                    val genero =
+                        valor.optString(i, "").trim()
 
                     if (
                         genero.isNotBlank() &&
@@ -1152,6 +1406,7 @@ class MainActivity : Activity() {
             }
 
             is String -> valor
+
             else -> ""
         }
     }
@@ -1160,12 +1415,15 @@ class MainActivity : Activity() {
     // CARGA Y ERRORES
     // =====================================================
 
-    private fun mostrarPantallaCarga(mensaje: String) {
+    private fun mostrarPantallaCarga(
+        mensaje: String
+    ) {
         contenido.removeAllViews()
 
         contenido.addView(
             texto(mensaje, 17f, false).apply {
                 gravity = Gravity.CENTER
+
                 setPadding(
                     dp(12),
                     dp(30),
@@ -1180,13 +1438,23 @@ class MainActivity : Activity() {
         contenido.removeAllViews()
 
         contenido.addView(
-            texto("Ocurrió un problema", 22f, true).apply {
-                setTextColor(Color.rgb(255, 120, 140))
+            texto(
+                "Ocurrió un problema",
+                22f,
+                true
+            ).apply {
+                setTextColor(
+                    Color.rgb(255, 120, 140)
+                )
             }
         )
 
         espacio(10)
-        contenido.addView(texto(mensaje, 14f, false))
+
+        contenido.addView(
+            texto(mensaje, 14f, false)
+        )
+
         espacio(16)
 
         contenido.addView(
@@ -1214,7 +1482,10 @@ class MainActivity : Activity() {
                 setTypeface(null, Typeface.BOLD)
             }
 
-            setLineSpacing(dp(2).toFloat(), 1f)
+            setLineSpacing(
+                dp(2).toFloat(),
+                1f
+            )
         }
     }
 
@@ -1227,23 +1498,31 @@ class MainActivity : Activity() {
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
+
             setPadding(
                 dp(14),
                 dp(12),
                 dp(14),
                 dp(12)
             )
+
             background = crearFondo(acento, 10)
             isClickable = true
             isFocusable = true
-            setOnClickListener { accion() }
+
+            setOnClickListener {
+                accion()
+            }
         }
     }
 
     private fun espacio(altura: Int) {
         contenido.addView(
             View(this),
-            LinearLayout.LayoutParams(1, dp(altura))
+            LinearLayout.LayoutParams(
+                1,
+                dp(altura)
+            )
         )
     }
 
@@ -1253,7 +1532,10 @@ class MainActivity : Activity() {
     ) {
         contenedor.addView(
             View(this),
-            LinearLayout.LayoutParams(1, dp(altura))
+            LinearLayout.LayoutParams(
+                1,
+                dp(altura)
+            )
         )
     }
 
