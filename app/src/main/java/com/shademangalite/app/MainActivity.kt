@@ -294,10 +294,11 @@ setBackgroundColor(Color.rgb(25, 20, 39))
 )
 
         encabezado.addView(
-            texto("Tu biblioteca de manga", 13f, false).apply {
-                setTextColor(textoSecundario)
-            }
-        )
+    texto("TU PRÓXIMA LECTURA EMPIEZA ACÁ", 10f, true).apply {
+        setTextColor(acento)
+        letterSpacing = 0.08f
+    }
+)
 
         if (conBuscador) {
             buscador = EditText(this).apply {
