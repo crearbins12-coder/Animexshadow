@@ -39,13 +39,13 @@ class MainActivity : Activity() {
     private val apiBase = "https://shademanga.com"
     private val tamanoPaginaCatalogo = 100
 
-    private val fondo = Color.rgb(18, 16, 29)
-    private val tarjeta = Color.rgb(35, 29, 49)
-    private val acento = Color.rgb(174, 100, 255)
-    private val textoColor = Color.WHITE
-    private val textoSecundario = Color.rgb(190, 183, 205)
-    private val colorPortada = Color.rgb(48, 43, 58)
-    private val colorErrorPortada = Color.rgb(65, 38, 55)
+    private val fondo = ShadeTheme.fondo
+private val tarjeta = ShadeTheme.tarjeta
+private val acento = ShadeTheme.acento
+private val textoColor = ShadeTheme.texto
+private val textoSecundario = ShadeTheme.textoSecundario
+private val colorPortada = ShadeTheme.colorPortada
+private val colorErrorPortada = ShadeTheme.colorErrorPortada
 
     private lateinit var raiz: LinearLayout
     private lateinit var contenido: LinearLayout
