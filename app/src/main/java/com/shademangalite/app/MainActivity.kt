@@ -82,7 +82,7 @@ class MainActivity : Activity() {
             setHintTextColor(gris)
             setTextColor(blanco)
             textSize = 15f
-            singleLine = true
+            setSingleLine = true
             setPadding(dp(16), 0, dp(16), 0)
             background = crearFondo(tarjeta, 14)
         }
