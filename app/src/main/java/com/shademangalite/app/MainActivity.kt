@@ -396,6 +396,71 @@ setBackgroundColor(Color.rgb(25, 20, 39))
         raiz.addView(crearNavegacionInferior())
 setContentView(raiz)
     }
+    private fun crearNavegacionInferior(): View {
+    val barra = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER
+        setBackgroundColor(Color.rgb(25, 20, 39))
+        setPadding(dp(6), dp(8), dp(6), dp(8))
+        elevation = dp(8).toFloat()
+    }
+
+    fun agregarOpcion(
+        icono: String,
+        titulo: String,
+        accion: () -> Unit
+    ) {
+        val opcion = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            isClickable = true
+            isFocusable = true
+            setPadding(dp(2), dp(4), dp(2), dp(4))
+            setOnClickListener { accion() }
+        }
+
+        opcion.addView(
+            texto(icono, 23f, true).apply {
+                gravity = Gravity.CENTER
+                setTextColor(acento)
+            }
+        )
+
+        opcion.addView(
+            texto(titulo, 11f, true).apply {
+                gravity = Gravity.CENTER
+                setTextColor(textoSecundario)
+            }
+        )
+
+        barra.addView(
+            opcion,
+            LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f
+            )
+        )
+    }
+
+    agregarOpcion("⌂", "Inicio") {
+        mostrarInicio()
+    }
+
+    agregarOpcion("▦", "Mangas") {
+        abrirTodosLosMangas()
+    }
+
+    agregarOpcion("♡", "Favoritos") {
+        mostrarPantallaEspecial(true)
+    }
+
+    agregarOpcion("◷", "Historial") {
+        mostrarPantallaEspecial(false)
+    }
+
+    return barra
+}
 
     // =====================================================
     // CARGA INICIAL DEL CATÁLOGO
