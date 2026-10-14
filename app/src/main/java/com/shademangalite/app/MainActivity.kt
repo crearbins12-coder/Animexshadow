@@ -409,8 +409,11 @@ setContentView(raiz)
     fun agregarOpcion(
         icono: String,
         titulo: String,
+        seleccionada: Boolean,
         accion: () -> Unit
     ) {
+        val color = if (seleccionada) acento else textoSecundario
+
         val opcion = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
@@ -423,14 +426,14 @@ setContentView(raiz)
         opcion.addView(
             texto(icono, 23f, true).apply {
                 gravity = Gravity.CENTER
-                setTextColor(acento)
+                setTextColor(color)
             }
         )
 
         opcion.addView(
             texto(titulo, 11f, true).apply {
                 gravity = Gravity.CENTER
-                setTextColor(textoSecundario)
+                setTextColor(color)
             }
         )
 
@@ -444,19 +447,25 @@ setContentView(raiz)
         )
     }
 
-    agregarOpcion("⌂", "Inicio") {
+    agregarOpcion(
+        "⌂",
+        "Inicio",
+        !mostrandoTodos &&
+            !mostrandoFavoritos &&
+            !mostrandoHistorial
+    ) {
         mostrarInicio()
     }
 
-    agregarOpcion("▦", "Mangas") {
+    agregarOpcion("▦", "Mangas", mostrandoTodos) {
         abrirTodosLosMangas()
     }
 
-    agregarOpcion("♡", "Favoritos") {
+    agregarOpcion("♡", "Favoritos", mostrandoFavoritos) {
         mostrarPantallaEspecial(true)
     }
 
-    agregarOpcion("◷", "Historial") {
+    agregarOpcion("◷", "Historial", mostrandoHistorial) {
         mostrarPantallaEspecial(false)
     }
 
