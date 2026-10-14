@@ -123,7 +123,7 @@ private fun crearEncabezado() {
         setHintTextColor(textoSecundario)
         setTextColor(textoColor)
         textSize = 15f
-        singleLine = true
+        setSingleLine(true)
         setPadding(dp(12), dp(8), dp(12), dp(8))
         background = crearFondo(tarjeta, 12)
     }
