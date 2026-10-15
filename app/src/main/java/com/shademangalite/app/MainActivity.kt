@@ -587,15 +587,14 @@ class MainActivity : Activity() {
                 val video = videoEncontrado
                 val servidor = embedEncontrado
                 if (video != null && servidor != null) {
-                    val aviso = if (servidor != embeds[indiceElegido]) {
+                    if (servidor != embeds[indiceElegido]) {
                         AlertDialog.Builder(this)
                             .setMessage("El servidor elegido no entregó un enlace directo. Se usará ${servidor.servidor}.")
                             .setPositiveButton("Continuar") { _, _ ->
                                 abrirReproductorAnime(video, servidor)
                             }
                             .setNegativeButton("Cancelar", null)
-                            .create()
-                        aviso.show()
+                            .show()
                     } else {
                         abrirReproductorAnime(video, servidor)
                     }
