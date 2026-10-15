@@ -23,40 +23,42 @@ private val alTocar: () -> Unit
 init {
     orientation = VERTICAL
     gravity = Gravity.TOP
-    setPadding(dp(5), dp(5), dp(5), dp(9))
+    setPadding(dp(6), dp(6), dp(6), dp(10))
     background = crearFondo(colorTarjeta, 14).apply {
-        setStroke(dp(1), Color.rgb(78, 55, 115))
+        setStroke(dp(1), Color.rgb(91, 66, 132))
     }
     isClickable = true
     isFocusable = true
+    elevation = dp(3).toFloat()
     setOnClickListener { alTocar() }
 
     val portada = ImageView(context).apply {
         scaleType = ImageView.ScaleType.CENTER_CROP
         contentDescription = "Portada de ${serie.titulo}"
+        background = crearFondo(Color.rgb(39, 31, 54), 12)
     }
 
     addView(
         portada,
         LayoutParams(
             LayoutParams.MATCH_PARENT,
-            dp(158)
+            dp(174)
         )
     )
 
     cargarPortada(portada, serie, 158, 10)
 
     addView(
-        crearTexto(serie.titulo, 13f, true).apply {
+        crearTexto(serie.titulo, 13.5f, true).apply {
             maxLines = 2
-            setPadding(dp(2), dp(5), dp(2), 0)
+            setPadding(dp(3), dp(8), dp(3), dp(1))
         }
     )
 
     addView(
         crearTexto("${serie.capitulos} capítulos", 10.5f, false).apply {
             setTextColor(colorTextoSecundario)
-            setPadding(dp(2), dp(3), dp(2), 0)
+            setPadding(dp(3), dp(4), dp(3), 0)
         }
     )
 }
