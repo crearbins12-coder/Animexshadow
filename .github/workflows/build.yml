@@ -5,6 +5,7 @@ name: Build ShadeManga Lite APK
   push:
     branches:
       - main
+      - fix/shademanga-integration
 
 permissions:
   contents: read
