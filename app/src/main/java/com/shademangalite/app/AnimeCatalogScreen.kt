@@ -270,9 +270,18 @@ class AnimeCatalogScreen(
         actualizarAdaptador(campoEstado, opcionesEstado)
     }
 
+    private val opcionesAdaptadorAplicadas = mutableMapOf<Int, List<String>>()
+
     private fun actualizarAdaptador(campo: AutoCompleteTextView, opciones: Set<String>) {
+        // No reconstruir los adaptadores si la página nueva no añadió opciones:
+        // evita trabajo innecesario durante la carga progresiva del catálogo.
+        val lista = opciones.toList()
+        val clave = System.identityHashCode(campo)
+        if (opcionesAdaptadorAplicadas[clave] == lista) return
+
         val seleccion = campo.text.toString()
-        campo.setAdapter(ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, opciones.toList()))
+        campo.setAdapter(ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, lista))
+        opcionesAdaptadorAplicadas[clave] = lista
         if (seleccion.isNotBlank()) campo.setText(seleccion, false)
     }
 
