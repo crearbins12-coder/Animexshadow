@@ -1169,7 +1169,7 @@ class MainActivity : Activity() {
 
     private var relacionesAnimeMangaCargando = false
     private var relacionesAnimeMangaListas = false
-    private var relacionesAnimeManga = listOf<Pair<Serie, Anime>>()
+    private var relacionesAnimeManga = listOf<Triple<Serie, Anime, Int>>()
 
     private fun normalizarTituloRelacion(titulo: String): String =
         java.text.Normalizer.normalize(titulo.lowercase(), java.text.Normalizer.Form.NFD)
@@ -1190,7 +1190,7 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
         ))
 
-        fun dibujar(items: List<Pair<Serie, Anime>>, cargando: Boolean) {
+        fun dibujar(items: List<Triple<Serie, Anime, Int>>, cargando: Boolean) {
             zona.removeAllViews()
             if (items.isEmpty()) {
                 zona.addView(texto(
@@ -1201,7 +1201,7 @@ class MainActivity : Activity() {
                 return
             }
 
-            items.forEach { (manga, anime) ->
+            items.forEach { (manga, anime, episodiosAnime) ->
                 val tarjetaRelacion = LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
@@ -1238,7 +1238,7 @@ class MainActivity : Activity() {
                     setPadding(0, dp(5), 0, dp(3))
                 })
                 datos.addView(TextView(this).apply {
-                    text = "🎬 Anime · ${anime.estado.ifBlank { anime.tipo.ifBlank { "Disponible en catálogo" } }}"
+                    text = "🎬 Anime · ${episodiosAnime.takeIf { it > 0 }?.let { "$it episodios" } ?: anime.estado.ifBlank { anime.tipo.ifBlank { "Disponible en catálogo" } }}"
                     textSize = 11f
                     setTextColor(Color.rgb(105, 224, 255))
                     maxLines = 2
@@ -1269,7 +1269,7 @@ class MainActivity : Activity() {
         relacionesAnimeMangaCargando = true
         val generacion = generacionCatalogo
         ejecutor.execute {
-            val coincidencias = mutableListOf<Pair<Serie, Anime>>()
+            val coincidencias = mutableListOf<Triple<Serie, Anime, Int>>()
             try {
                 val candidatos = catalogo.filter { !it.esMayorDeEdad }.take(10)
                 for (manga in candidatos) {
@@ -1292,7 +1292,8 @@ class MainActivity : Activity() {
                     if (animeExacto != null && coincidencias.none {
                             it.first.id == manga.id || it.second.token == animeExacto.token
                         }) {
-                        coincidencias.add(manga to animeExacto)
+                        val cantidadEpisodios = runCatching { animeApi.obtenerDetalle(animeExacto.token, true).numEpisodios }.getOrDefault(0)
+                        coincidencias.add(Triple(manga, animeExacto, cantidadEpisodios))
                     }
                 }
             } catch (_: Exception) {
