@@ -13,6 +13,7 @@ import android.widget.TextView
 class MangaCarouselCard(
 context: Context,
 private val serie: Serie,
+private val tieneAnime: Boolean = false,
 private val colorTarjeta: Int,
 private val colorTextoSecundario: Int,
 private val crearFondo: (Int, Int) -> android.graphics.drawable.GradientDrawable,
@@ -58,7 +59,7 @@ init {
     cargarPortada(portada, serie, 185, 8)
 
     val etiqueta = TextView(context).apply {
-        text = "✦  ANIMEX"
+        text = if (tieneAnime) "🎬 ANIME" else "✦  ANIMEX"
         textSize = 8.5f
         letterSpacing = 0.08f
         setTypeface(null, android.graphics.Typeface.BOLD)
