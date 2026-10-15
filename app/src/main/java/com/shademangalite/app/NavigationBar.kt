@@ -1,6 +1,8 @@
 package com.shademangalite.app
 
 import android.content.Context
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -23,8 +25,11 @@ class NavigationBar(
     init {
         orientation = HORIZONTAL
         gravity = Gravity.CENTER
-        setBackgroundColor(ShadeTheme.fondoBarra)
-        setPadding(dp(4), dp(7), dp(4), dp(7))
+        background = GradientDrawable().apply {
+            setColor(ShadeTheme.fondoBarra)
+            setStroke(dp(1), Color.rgb(54, 43, 75))
+        }
+        setPadding(dp(5), dp(7), dp(5), dp(7))
         elevation = dp(8).toFloat()
         agregarOpcion("⌂", "Inicio", !mostrandoTodos && !mostrandoFavoritos && !mostrandoHistorial && !mostrandoAnime, onInicio)
         agregarOpcion("▦", "Mangas", mostrandoTodos, onMangas)
@@ -40,7 +45,14 @@ class NavigationBar(
             gravity = Gravity.CENTER
             isClickable = true
             isFocusable = true
-            setPadding(dp(1), dp(4), dp(1), dp(4))
+            setPadding(dp(2), dp(5), dp(2), dp(5))
+            if (seleccionada) {
+                background = GradientDrawable().apply {
+                    setColor(Color.rgb(54, 38, 77))
+                    cornerRadius = dp(12).toFloat()
+                    setStroke(dp(1), Color.rgb(112, 76, 157))
+                }
+            }
             setOnClickListener { accion() }
         }
         opcion.addView(TextView(context).apply { text = icono; textSize = 22f; gravity = Gravity.CENTER; setTextColor(color) })
