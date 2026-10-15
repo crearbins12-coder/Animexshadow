@@ -1077,6 +1077,10 @@ class MainActivity : Activity() {
         ))
         espacio(18)
 
+        // Sección dinámica: solo muestra obras cuyo anime y manga coinciden por título.
+        agregarSeccionAnimeYManga()
+        espacio(18)
+
         val ultimaSerieId = preferencias.getString("ultima_serie", "")
         val ultimaSerie = catalogo.firstOrNull {
             it.id == ultimaSerieId
@@ -1159,6 +1163,151 @@ class MainActivity : Activity() {
                     setTextColor(textoSecundario)
                 }
             )
+        }
+    }
+
+
+    private var relacionesAnimeMangaCargando = false
+    private var relacionesAnimeMangaListas = false
+    private var relacionesAnimeManga = listOf<Pair<Serie, Anime>>()
+
+    private fun normalizarTituloRelacion(titulo: String): String =
+        java.text.Normalizer.normalize(titulo.lowercase(), java.text.Normalizer.Form.NFD)
+            .replace(Regex("\\p{Mn}+"), "")
+            .replace(Regex("[^a-z0-9]+"), " ")
+            .trim()
+
+    private fun agregarSeccionAnimeYManga() {
+        contenido.addView(texto("✦  ANIME + MANGA", 20f, true))
+        espacio(4)
+        contenido.addView(texto("Encontrá las dos versiones de una misma historia.", 12f, false).apply {
+            setTextColor(textoSecundario)
+        })
+        espacio(10)
+
+        val zona = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        contenido.addView(zona, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ))
+
+        fun dibujar(items: List<Pair<Serie, Anime>>, cargando: Boolean) {
+            zona.removeAllViews()
+            if (items.isEmpty()) {
+                zona.addView(texto(
+                    if (cargando) "Buscando coincidencias reales entre los catálogos..."
+                    else "Todavía no encontramos coincidencias exactas en los catálogos disponibles.",
+                    12f, false
+                ).apply { setTextColor(textoSecundario) })
+                return
+            }
+
+            items.forEach { (manga, anime) ->
+                val tarjetaRelacion = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(10), dp(10), dp(10), dp(10))
+                    background = GradientDrawable().apply {
+                        setColor(Color.rgb(24, 21, 37))
+                        cornerRadius = dp(17).toFloat()
+                        setStroke(dp(1), Color.rgb(91, 65, 137))
+                    }
+                }
+                val portada = ImageView(this).apply {
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    background = crearFondo(Color.rgb(39, 31, 54), 10)
+                    contentDescription = "Portada de ${manga.titulo}"
+                }
+                cargarPortada(portada, manga, 118, 10)
+                tarjetaRelacion.addView(portada, LinearLayout.LayoutParams(dp(82), dp(118)))
+
+                val datos = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(dp(11), 0, 0, 0)
+                }
+                datos.addView(TextView(this).apply {
+                    text = manga.titulo
+                    textSize = 15f
+                    maxLines = 2
+                    setTypeface(null, Typeface.BOLD)
+                    setTextColor(Color.WHITE)
+                })
+                datos.addView(TextView(this).apply {
+                    text = "📖 Manga · ${manga.capitulos} capítulos"
+                    textSize = 11f
+                    setTextColor(Color.rgb(195, 184, 220))
+                    setPadding(0, dp(5), 0, dp(3))
+                })
+                datos.addView(TextView(this).apply {
+                    text = "🎬 Anime · ${anime.estado.ifBlank { anime.tipo.ifBlank { "Disponible en catálogo" } }}"
+                    textSize = 11f
+                    setTextColor(Color.rgb(105, 224, 255))
+                    maxLines = 2
+                })
+                val botones = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    setPadding(0, dp(9), 0, 0)
+                }
+                botones.addView(boton("📖 Leer") { mostrarSerie(manga) },
+                    LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(4) })
+                botones.addView(boton("🎬 Anime") { mostrarDetalleAnime(anime) },
+                    LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginStart = dp(4) })
+                datos.addView(botones)
+                tarjetaRelacion.addView(datos, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                zona.addView(tarjetaRelacion, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { bottomMargin = dp(9) })
+            }
+        }
+
+        if (relacionesAnimeMangaListas) {
+            dibujar(relacionesAnimeManga, false)
+            return
+        }
+        dibujar(emptyList(), true)
+        if (relacionesAnimeMangaCargando || catalogo.isEmpty()) return
+
+        relacionesAnimeMangaCargando = true
+        val generacion = generacionCatalogo
+        ejecutor.execute {
+            val coincidencias = mutableListOf<Pair<Serie, Anime>>()
+            try {
+                val candidatos = catalogo.filter { !it.esMayorDeEdad }.take(10)
+                for (manga in candidatos) {
+                    if (coincidencias.size >= 4) break
+                    val resultados = runCatching {
+                        animeApi.obtenerCatalogo(
+                            busqueda = manga.titulo, pagina = 1, tamanoPagina = 8, excluirAdultos = true
+                        ).items
+                    }.getOrDefault(emptyList())
+
+                    val claveManga = normalizarTituloRelacion(manga.titulo)
+                    val animeExacto = resultados.firstOrNull { anime ->
+                        val tituloAnime = normalizarTituloRelacion(anime.titulo)
+                        tituloAnime == claveManga ||
+                            (tituloAnime.isNotBlank() && claveManga.isNotBlank() &&
+                                (tituloAnime.startsWith(claveManga) || claveManga.startsWith(tituloAnime)) &&
+                                minOf(tituloAnime.length, claveManga.length).toDouble() /
+                                    maxOf(tituloAnime.length, claveManga.length).toDouble() >= 0.85)
+                    }
+                    if (animeExacto != null && coincidencias.none {
+                            it.first.id == manga.id || it.second.token == animeExacto.token
+                        }) {
+                        coincidencias.add(manga to animeExacto)
+                    }
+                }
+            } catch (_: Exception) {
+                // La página de inicio sigue funcionando aunque falle uno de los catálogos.
+            }
+
+            runOnUiThread {
+                relacionesAnimeMangaCargando = false
+                if (isFinishing || isDestroyed || generacion != generacionCatalogo ||
+                    !::contenido.isInitialized || mostrandoTodos || mostrandoFavoritos ||
+                    mostrandoHistorial || filtroActual.isNotBlank()) return@runOnUiThread
+                relacionesAnimeManga = coincidencias
+                relacionesAnimeMangaListas = true
+                dibujar(relacionesAnimeManga, false)
+            }
         }
     }
 
