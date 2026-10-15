@@ -216,7 +216,7 @@ class AnimeCatalogScreen(
         }
     }
 
-    fun mostrarCatalogo(animes: List<Anime>, total: Int = animes.size) {
+    fun mostrarCatalogo(animes: List<Anime>, total: Int = animes.size, hayMas: Boolean = false) {
         contenido.removeViews(1, contenido.childCount - 1)
 
         val animesSeguros = animes.filterNot { it.esMayorDeEdad }
@@ -279,6 +279,27 @@ class AnimeCatalogScreen(
                 }
             )
         }
+
+        if (hayMas) {
+            botonMas.apply {
+                text = "CARGAR MÁS ANIMES  ↓"
+                textSize = 12f
+                setTypeface(null, Typeface.BOLD)
+                gravity = Gravity.CENTER
+                setTextColor(Color.WHITE)
+                setPadding(dp(16), dp(13), dp(16), dp(13))
+                background = GradientDrawable().apply { setColor(colorAcento); cornerRadius = dp(13).toFloat() }
+                isEnabled = true
+                setOnClickListener { isEnabled = false; text = "CARGANDO..."; onCargarMas() }
+            }
+            contenido.addView(botonMas, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { setMargins(dp(8), dp(8), dp(8), dp(12)) })
+        }
+    }
+
+    fun mostrarErrorCargaMas() {
+        botonMas.isEnabled = true
+        botonMas.text = "REINTENTAR CARGA"
+        botonMas.setOnClickListener { isEnabled = false; onCargarMas() }
     }
 
     private fun agregarDestacado(anime: Anime) {
