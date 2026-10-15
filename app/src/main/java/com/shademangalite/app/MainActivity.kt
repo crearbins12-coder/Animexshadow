@@ -250,7 +250,7 @@ class MainActivity : Activity() {
         mostrandoHistorial = false
         restaurarPosicionCatalogo = false
 
-        construirPantalla("ShadeManga Lite", true)
+        construirPantalla("AnimexShadow", true)
         mostrarCatalogoFiltrado()
     }
 
@@ -265,33 +265,21 @@ class MainActivity : Activity() {
 
         val encabezado = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(20), dp(20), dp(19))
-            background = GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                intArrayOf(
-                    Color.rgb(47, 20, 78),
-                    Color.rgb(30, 25, 62),
-                    Color.rgb(13, 21, 38)
-                )
-            ).apply {
-                cornerRadius = dp(26).toFloat()
-                setStroke(dp(1), Color.rgb(112, 62, 180))
-            }
-            elevation = dp(7).toFloat()
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            setBackgroundColor(Color.rgb(24, 23, 29))
         }
 
         val insignia = TextView(this).apply {
-            text = "✦  ANIMEXSHADOW  /  MANGA"
-            textSize = 10f
-            letterSpacing = 0.14f
+            text = "ANIMEXSHADOW"
+            textSize = 11f
+            letterSpacing = 0.08f
             typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
             setTextColor(Color.rgb(226, 202, 255))
             gravity = Gravity.CENTER
             setPadding(dp(11), dp(7), dp(11), dp(7))
             background = GradientDrawable().apply {
                 setColor(Color.rgb(47, 31, 72))
-                cornerRadius = dp(30).toFloat()
-                setStroke(dp(1), Color.rgb(133, 74, 215))
+                cornerRadius = dp(8).toFloat()
             }
         }
         encabezado.addView(
@@ -303,10 +291,10 @@ class MainActivity : Activity() {
         )
 
         encabezado.addView(
-            texto(titulo, 31f, true).apply {
+            texto(titulo, 25f, true).apply {
                 setTextColor(Color.WHITE)
                 letterSpacing = -0.015f
-                setPadding(0, dp(11), 0, dp(3))
+                setPadding(0, dp(7), 0, dp(2))
             }
         )
 
@@ -323,38 +311,12 @@ class MainActivity : Activity() {
             }
         )
 
-        val filaEtiquetas = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(13), 0, 0)
-        }
+        // Encabezado compacto: catálogo al frente, sin banners decorativos.
 
-        listOf("⚡ NEON EDITION", "✦ NUEVAS HISTORIAS").forEachIndexed { indice, etiqueta ->
-            val chip = TextView(this).apply {
-                text = etiqueta
-                textSize = 9f
-                letterSpacing = 0.04f
-                setTypeface(null, Typeface.BOLD)
-                setTextColor(if (indice == 0) Color.rgb(107, 225, 255) else Color.rgb(219, 184, 255))
-                setPadding(dp(9), dp(7), dp(9), dp(7))
-                background = GradientDrawable().apply {
-                    setColor(if (indice == 0) Color.rgb(17, 43, 58) else Color.rgb(43, 27, 63))
-                    cornerRadius = dp(9).toFloat()
-                    setStroke(dp(1), if (indice == 0) Color.rgb(38, 117, 148) else Color.rgb(104, 57, 145))
-                }
-            }
-            filaEtiquetas.addView(chip, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                if (indice > 0) leftMargin = dp(8)
-            })
-        }
-        encabezado.addView(filaEtiquetas)
 
         if (conBuscador) {
             buscador = EditText(this).apply {
-                hint = "⌕   Buscar manga, autor o género..."
+                hint = "Buscar manga, autor o género..."
                 setHintTextColor(textoSecundario)
                 setTextColor(textoColor)
                 textSize = 15f
@@ -404,7 +366,7 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                setMargins(dp(12), dp(10), dp(12), dp(8))
+                setMargins(dp(10), dp(8), dp(10), dp(4))
             }
         )
 
@@ -442,7 +404,7 @@ class MainActivity : Activity() {
 
         contenido = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), dp(10), dp(12), dp(24))
+            setPadding(dp(10), dp(8), dp(10), dp(24))
         }
 
         scrollPrincipal.addView(contenido)
