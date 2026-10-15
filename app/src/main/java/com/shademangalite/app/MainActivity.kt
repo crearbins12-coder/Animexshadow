@@ -893,242 +893,156 @@ class MainActivity : Activity() {
             return
         }
 
-        contenido.addView(texto("Tu biblioteca", 21f, true))
-        espacio(10)
-
-        val accesos = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-        }
-
-        accesos.addView(
-            boton("★ Favoritos") {
-                mostrarPantallaEspecial(true)
-            },
-            LinearLayout.LayoutParams(0, dp(46), 1f).apply {
-                marginEnd = dp(6)
-            }
-        )
-
-        accesos.addView(
-            boton("◷ Historial") {
-                mostrarPantallaEspecial(false)
-            },
-            LinearLayout.LayoutParams(0, dp(46), 1f).apply {
-                marginStart = dp(6)
-            }
-        )
-
-        contenido.addView(accesos)
-
-        // Panel editorial neon: una entrada visual al catálogo y datos reales de la biblioteca.
-        val panelDescubrimiento = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(15), dp(16), dp(15))
-            background = GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                intArrayOf(
-                    Color.rgb(42, 24, 68),
-                    Color.rgb(24, 31, 54),
-                    Color.rgb(15, 29, 42)
-                )
-            ).apply {
-                cornerRadius = dp(20).toFloat()
-                setStroke(dp(1), Color.rgb(91, 65, 137))
-            }
-            isClickable = true
-            isFocusable = true
-            setOnClickListener {
-                catalogo.firstOrNull()?.let { destacada -> mostrarSerie(destacada) }
-            }
-        }
-
-        val mangaDestacado = catalogo.firstOrNull()
-        val filaDestacada = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-
-        val portadaDestacada = ImageView(this).apply {
-            scaleType = ImageView.ScaleType.CENTER_CROP
-            contentDescription = mangaDestacado?.let { "Portada de ${it.titulo}" } ?: "Manga destacado"
-            background = crearFondo(Color.rgb(39, 31, 54), 12)
-        }
-        if (mangaDestacado != null) {
-            cargarPortada(portadaDestacada, mangaDestacado, 144, 12)
-        }
-        filaDestacada.addView(portadaDestacada, LinearLayout.LayoutParams(
-            dp(104),
-            dp(144)
-        ))
-
-        val datosDestacados = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(13), 0, 0, 0)
-        }
-        datosDestacados.addView(TextView(this).apply {
-            text = "✦  NEON DISCOVERY"
-            textSize = 10f
-            letterSpacing = 0.12f
-            setTypeface(null, Typeface.BOLD)
-            setTextColor(Color.rgb(105, 224, 255))
-        })
-        datosDestacados.addView(TextView(this).apply {
-            text = mangaDestacado?.titulo ?: "Tu próxima obsesión"
-            textSize = 19f
-            maxLines = 3
-            ellipsize = android.text.TextUtils.TruncateAt.END
-            setLineSpacing(0f, 0.98f)
-            setTypeface(null, Typeface.BOLD)
+        // Inicio organizado como el catálogo web de ShadeManga: populares, novedades y géneros.
+        contenido.addView(texto("Leer manga online gratis en español", 22f, true).apply {
             setTextColor(Color.WHITE)
-            setPadding(0, dp(8), 0, dp(6))
         })
-        datosDestacados.addView(TextView(this).apply {
-            text = mangaDestacado?.let {
-                if (it.genero.isNotBlank()) it.genero else "Una historia para descubrir"
-            } ?: "Historias para descubrir"
-            textSize = 11f
-            maxLines = 2
-            ellipsize = android.text.TextUtils.TruncateAt.END
-            setTextColor(Color.rgb(190, 194, 216))
-        })
-        datosDestacados.addView(TextView(this).apply {
-            text = "VER MANGA  ↗"
-            textSize = 10f
-            letterSpacing = 0.06f
-            setTypeface(null, Typeface.BOLD)
-            setTextColor(Color.rgb(105, 224, 255))
-            setPadding(0, dp(12), 0, 0)
-        })
-        filaDestacada.addView(datosDestacados, LinearLayout.LayoutParams(
-            0,
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-            1f
-        ))
-        panelDescubrimiento.addView(filaDestacada)
-
-        val filaEstadisticas = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(13), 0, 0)
-        }
-        listOf(
-            "▣  ${catalogo.size} MANGAS",
-            "★  ${favoritos.size} FAVORITOS"
-        ).forEachIndexed { indice, etiqueta ->
-            filaEstadisticas.addView(TextView(this).apply {
-                text = etiqueta
-                textSize = 9f
-                letterSpacing = 0.03f
-                setTypeface(null, Typeface.BOLD)
-                setTextColor(if (indice == 0) Color.rgb(220, 194, 255) else Color.rgb(105, 224, 255))
-                setPadding(dp(9), dp(7), dp(9), dp(7))
-                background = GradientDrawable().apply {
-                    setColor(if (indice == 0) Color.rgb(48, 31, 68) else Color.rgb(18, 43, 54))
-                    cornerRadius = dp(9).toFloat()
-                }
-            }, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                if (indice > 0) leftMargin = dp(8)
-            })
-        }
-        panelDescubrimiento.addView(filaEstadisticas)
-        contenido.addView(panelDescubrimiento, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ))
-        espacio(18)
-
-        // Las coincidencias se cargan en segundo plano y se muestran como etiqueta en cada manga.
-        cargarRelacionesAnimeManga()
-
-        val ultimaSerieId = preferencias.getString("ultima_serie", "")
-        val ultimaSerie = catalogo.firstOrNull {
-            it.id == ultimaSerieId
-        }
-
-        if (ultimaSerie != null) {
-            contenido.addView(texto("Continuar leyendo", 19f, true))
-            espacio(8)
-            contenido.addView(crearTarjetaContinuar(ultimaSerie))
-            espacio(18)
-        }
-
-        val listaFavoritos = favoritos.mapNotNull { id ->
-            catalogo.firstOrNull { it.id == id }
-        }
-
-        if (listaFavoritos.isNotEmpty()) {
-            contenido.addView(texto("Tus favoritos ★", 19f, true))
-            espacio(8)
-            agregarCarrusel(listaFavoritos.take(15))
-            espacio(18)
-        }
-
-        contenido.addView(texto("Descubrí tu próximo manga", 21f, true))
         espacio(6)
+        contenido.addView(texto(
+            "Explorá manga, manhwa y manhua; encontrá una serie y entrá directo a su ficha.",
+            13f, false
+        ).apply { setTextColor(textoSecundario) })
+        espacio(14)
 
-        contenido.addView(
-            texto("Deslizá para explorar las portadas", 13f, false).apply {
-                setTextColor(textoSecundario)
+        val accesos = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        accesos.addView(boton("★ Favoritos") { mostrarPantallaEspecial(true) },
+            LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginEnd = dp(5) })
+        accesos.addView(boton("◷ Historial") { mostrarPantallaEspecial(false) },
+            LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginStart = dp(5) })
+        contenido.addView(accesos)
+        espacio(20)
+
+        fun tituloSeccion(titulo: String, detalle: String? = null) {
+            val filaTitulo = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
             }
-        )
+            filaTitulo.addView(texto(titulo, 20f, true).apply {
+                setTextColor(Color.WHITE)
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            if (!detalle.isNullOrBlank()) {
+                filaTitulo.addView(texto(detalle, 12f, false).apply {
+                    setTextColor(textoSecundario)
+                })
+            }
+            contenido.addView(filaTitulo)
+            espacio(9)
+        }
 
+        // El orden recibido por el catálogo se conserva; no se inventan puntuaciones.
+        tituloSeccion("Populares", "Ver todos  ›")
+        agregarCarrusel(lista.take(15))
+        espacio(20)
+
+        tituloSeccion("Novedades")
+        val recientes = if (lista.size > 15) lista.takeLast(15).asReversed() else lista.asReversed()
+        agregarCarrusel(recientes)
+        espacio(20)
+
+        // Si hay coincidencias reales, se integran anime y manga en una sola sección.
+        cargarRelacionesAnimeManga()
+        val relacionesVisibles = relacionesAnimeManga.filter { relacion ->
+            lista.any { it.id == relacion.first.id }
+        }
+        if (relacionesVisibles.isNotEmpty()) {
+            tituloSeccion("Anime + Manga", "Series relacionadas")
+            for ((manga, anime, episodios) in relacionesVisibles.take(8)) {
+                val filaRelacion = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(10), dp(9), dp(10), dp(9))
+                    background = crearFondo(tarjeta, 12)
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener { mostrarSerie(manga) }
+                }
+                val portada = ImageView(this).apply {
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    contentDescription = "Portada de ${manga.titulo}"
+                }
+                cargarPortada(portada, manga, 68, 8)
+                filaRelacion.addView(portada, LinearLayout.LayoutParams(dp(48), dp(68)))
+                val info = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(dp(10), 0, 0, 0)
+                }
+                info.addView(texto(manga.titulo, 14f, true).apply {
+                    maxLines = 2
+                    setTextColor(Color.WHITE)
+                })
+                info.addView(texto(
+                    "${manga.capitulos} capítulos  ·  ${if (episodios > 0) "$episodios episodios" else "Anime disponible"}",
+                    11f, false
+                ).apply { setTextColor(Color.rgb(111, 218, 245)); setPadding(0, dp(4), 0, 0) })
+                filaRelacion.addView(info, LinearLayout.LayoutParams(0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                contenido.addView(filaRelacion)
+                espacio(7)
+            }
+            espacio(14)
+        }
+
+        tituloSeccion("Géneros")
+        val generos = linkedSetOf<String>()
+        lista.forEach { serie ->
+            serie.genero.split(",").map { it.trim() }.filter { it.isNotBlank() }
+                .forEach { generos.add(it) }
+        }
+        val generosVisibles = generos.take(18)
+        val filaGeneros = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        var filaGenero = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        var enFila = 0
+        for (genero in generosVisibles) {
+            val chip = TextView(this).apply {
+                text = genero
+                textSize = 12f
+                setTextColor(textoColor)
+                setPadding(dp(11), dp(8), dp(11), dp(8))
+                background = crearFondo(tarjeta, 18).apply {
+                    setStroke(dp(1), Color.rgb(65, 59, 75))
+                }
+                isClickable = true
+                isFocusable = true
+                setOnClickListener {
+                    filtroActual = genero
+                    if (::buscador.isInitialized) buscador.setText(genero)
+                    else mostrarCatalogoFiltrado()
+                }
+            }
+            filaGenero.addView(chip, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { marginEnd = dp(7); bottomMargin = dp(7) })
+            enFila++
+            if (enFila == 3) {
+                filaGeneros.addView(filaGenero)
+                filaGenero = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                enFila = 0
+            }
+        }
+        if (enFila > 0) filaGeneros.addView(filaGenero)
+        contenido.addView(filaGeneros)
         espacio(16)
 
-        val categorias = linkedMapOf<String, MutableList<Serie>>()
-
-        for (serie in lista) {
-            val generos = serie.genero
-                .split(",")
-                .map { it.trim() }
-                .filter { it.isNotBlank() }
-
-            if (generos.isEmpty()) {
-                categorias.getOrPut("Otros") { mutableListOf() }.add(serie)
-            } else {
-                for (genero in generos) {
-                    categorias.getOrPut(genero) { mutableListOf() }.add(serie)
-                }
-            }
-        }
-
-        for ((nombre, mangas) in categorias.entries.take(5)) {
-            contenido.addView(
-                texto(nombre, 19f, true).apply {
-                    setTextColor(textoColor)
-                }
-            )
-
-            espacio(8)
-            agregarCarrusel(mangas.take(15))
-            espacio(18)
-        }
-
-        contenido.addView(
-            boton("📚 Mostrar más mangas") {
-                abrirTodosLosMangas()
-            }
-        )
-
+        tituloSeccion("Todos los mangas")
+        contenido.addView(texto(
+            "${catalogo.size} series disponibles en el catálogo",
+            12f, false
+        ).apply { setTextColor(textoSecundario) })
         espacio(8)
-
+        contenido.addView(boton("Explorar catálogo completo  ›") {
+            abrirTodosLosMangas()
+        })
+        espacio(8)
         if (hayMasCatalogo || cargandoMasCatalogo) {
-            contenido.addView(
-                texto(
-                    "Hay más mangas para descubrir en el catálogo.",
-                    12f,
-                    false
-                ).apply {
-                    gravity = Gravity.CENTER
-                    setTextColor(textoSecundario)
-                }
-            )
+            contenido.addView(texto(
+                "Hay más mangas para descubrir en el catálogo.",
+                12f, false
+            ).apply {
+                gravity = Gravity.CENTER
+                setTextColor(textoSecundario)
+            })
         }
     }
-
 
     private var relacionesAnimeMangaCargando = false
     private var relacionesAnimeMangaListas = false
