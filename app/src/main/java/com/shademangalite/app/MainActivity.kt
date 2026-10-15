@@ -8,7 +8,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
 import android.view.MotionEvent
-import android.view.ScaleGestureDetector
 import android.view.View
 import android.view.WindowManager
 import android.widget.EditText
@@ -20,7 +19,6 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.text.TextWatcher
 import android.text.Editable
-import android.content.pm.ActivityInfo
 import coil.load
 import coil.request.CachePolicy
 import coil.size.Precision
@@ -40,12 +38,12 @@ class MainActivity : Activity() {
     private val tamanoPaginaCatalogo = 100
 
     private val fondo = ShadeTheme.fondo
-private val tarjeta = ShadeTheme.tarjeta
-private val acento = ShadeTheme.acento
-private val textoColor = ShadeTheme.texto
-private val textoSecundario = ShadeTheme.textoSecundario
-private val colorPortada = ShadeTheme.colorPortada
-private val colorErrorPortada = ShadeTheme.colorErrorPortada
+    private val tarjeta = ShadeTheme.tarjeta
+    private val acento = ShadeTheme.acento
+    private val textoColor = ShadeTheme.texto
+    private val textoSecundario = ShadeTheme.textoSecundario
+    private val colorPortada = ShadeTheme.colorPortada
+    private val colorErrorPortada = ShadeTheme.colorErrorPortada
 
     private lateinit var raiz: LinearLayout
     private lateinit var contenido: LinearLayout
@@ -83,20 +81,14 @@ private val colorErrorPortada = ShadeTheme.colorErrorPortada
         getSharedPreferences("shademanga_lectura", MODE_PRIVATE)
     }
 
-    // Favoritos: IDs de las series.
     private val favoritos = linkedSetOf<String>()
-
-    // Historial: IDs de series leídas, con la más reciente primero.
     private val historial = mutableListOf<String>()
 
-    // Datos para recuperar la lectura exacta.
     private var posicionVerticalGuardada = 0
 
-    // Pantallas adicionales.
     private var mostrandoFavoritos = false
     private var mostrandoHistorial = false
 
-    // LECTOR
     private var lectorActivo = false
     private var lectorPantallaCompleta = false
     private var modoLectura = "vertical"
@@ -135,23 +127,16 @@ private val colorErrorPortada = ShadeTheme.colorErrorPortada
         super.onDestroy()
     }
 
+    @Suppress("DEPRECATION")
     override fun onBackPressed() {
         when {
-            lectorActivo -> {
-                salirDelLector()
-            }
+            lectorActivo -> salirDelLector()
 
-            mostrandoFavoritos || mostrandoHistorial -> {
-                mostrarInicio()
-            }
+            mostrandoFavoritos || mostrandoHistorial -> mostrarInicio()
 
-            mostrandoTodos -> {
-                mostrarInicio()
-            }
+            mostrandoTodos -> mostrarInicio()
 
-            else -> {
-                super.onBackPressed()
-            }
+            else -> super.onBackPressed()
         }
     }
 
@@ -266,21 +251,21 @@ private val colorErrorPortada = ShadeTheme.colorErrorPortada
         val encabezado = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(18), dp(18), dp(18), dp(14))
-setBackgroundColor(Color.rgb(25, 20, 39)) 
+            setBackgroundColor(Color.rgb(25, 20, 39))
         }
 
         encabezado.addView(
-    texto(titulo, 26f, true).apply {
-        setTextColor(Color.WHITE)
-    }
-)
+            texto(titulo, 26f, true).apply {
+                setTextColor(Color.WHITE)
+            }
+        )
 
         encabezado.addView(
-    texto("TU PRÓXIMA LECTURA EMPIEZA ACÁ", 10f, true).apply {
-        setTextColor(acento)
-        letterSpacing = 0.08f
-    }
-)
+            texto("TU PRÓXIMA LECTURA EMPIEZA ACÁ", 10f, true).apply {
+                setTextColor(acento)
+                letterSpacing = 0.08f
+            }
+        )
 
         if (conBuscador) {
             buscador = EditText(this).apply {
@@ -377,22 +362,22 @@ setBackgroundColor(Color.rgb(25, 20, 39))
         )
 
         raiz.addView(
-NavigationBar(
-context = this,
-acento = acento,
-textoSecundario = textoSecundario,
-mostrandoTodos = mostrandoTodos,
-mostrandoFavoritos = mostrandoFavoritos,
-mostrandoHistorial = mostrandoHistorial,
-onInicio = { mostrarInicio() },
-onMangas = { abrirTodosLosMangas() },
-onFavoritos = { mostrarPantallaEspecial(true) },
-onHistorial = { mostrarPantallaEspecial(false) }
-)
-)
+            NavigationBar(
+                context = this,
+                acento = acento,
+                textoSecundario = textoSecundario,
+                mostrandoTodos = mostrandoTodos,
+                mostrandoFavoritos = mostrandoFavoritos,
+                mostrandoHistorial = mostrandoHistorial,
+                onInicio = { mostrarInicio() },
+                onMangas = { abrirTodosLosMangas() },
+                onFavoritos = { mostrarPantallaEspecial(true) },
+                onHistorial = { mostrarPantallaEspecial(false) }
+            )
+        )
 
-    setContentView(raiz)
-}
+        setContentView(raiz)
+    }
 
     // =====================================================
     // CARGA INICIAL DEL CATÁLOGO
@@ -578,7 +563,8 @@ onHistorial = { mostrarPantallaEspecial(false) }
             }
         }
     }
-        // =====================================================
+
+    // =====================================================
     // PORTADAS
     // =====================================================
 
@@ -650,10 +636,7 @@ onHistorial = { mostrarPantallaEspecial(false) }
             return
         }
 
-        // Accesos rápidos.
-        contenido.addView(
-            texto("Tu biblioteca", 21f, true)
-        )
+        contenido.addView(texto("Tu biblioteca", 21f, true))
         espacio(10)
 
         val accesos = LinearLayout(this).apply {
@@ -681,40 +664,30 @@ onHistorial = { mostrarPantallaEspecial(false) }
         contenido.addView(accesos)
         espacio(18)
 
-        // Continuar leyendo.
         val ultimaSerieId = preferencias.getString("ultima_serie", "")
         val ultimaSerie = catalogo.firstOrNull {
             it.id == ultimaSerieId
         }
 
         if (ultimaSerie != null) {
-            contenido.addView(
-                texto("Continuar leyendo", 19f, true)
-            )
+            contenido.addView(texto("Continuar leyendo", 19f, true))
             espacio(8)
-
             contenido.addView(crearTarjetaContinuar(ultimaSerie))
             espacio(18)
         }
 
-        // Favoritos.
         val listaFavoritos = favoritos.mapNotNull { id ->
             catalogo.firstOrNull { it.id == id }
         }
 
         if (listaFavoritos.isNotEmpty()) {
-            contenido.addView(
-                texto("Tus favoritos ★", 19f, true)
-            )
+            contenido.addView(texto("Tus favoritos ★", 19f, true))
             espacio(8)
             agregarCarrusel(listaFavoritos.take(15))
             espacio(18)
         }
 
-        contenido.addView(
-            texto("Descubrí tu próximo manga", 21f, true)
-        )
-
+        contenido.addView(texto("Descubrí tu próximo manga", 21f, true))
         espacio(6)
 
         contenido.addView(
@@ -777,50 +750,49 @@ onHistorial = { mostrarPantallaEspecial(false) }
     }
 
     private fun crearTarjetaContinuar(serie: Serie): View {
-val capituloGuardado =
-preferencias.getString("ultimo_capitulo", "")
+        val capituloGuardado =
+            preferencias.getString("ultimo_capitulo", "")
 
-val tituloGuardado =
-    preferencias.getString("ultimo_titulo", "")
+        val tituloGuardado =
+            preferencias.getString("ultimo_titulo", "")
 
-val mensajeProgreso =
-    if (
-        tituloGuardado == serie.titulo &&
-        capituloGuardado?.isNotBlank() == true
-    ) {
-        "Último capítulo leído guardado"
-    } else {
-        "Retomá tu lectura"
+        val mensajeProgreso =
+            if (
+                tituloGuardado == serie.titulo &&
+                capituloGuardado?.isNotBlank() == true
+            ) {
+                "Último capítulo leído guardado"
+            } else {
+                "Retomá tu lectura"
+            }
+
+        return MangaContinueCard(
+            context = this,
+            serie = serie,
+            mensajeProgreso = mensajeProgreso,
+            colorTarjeta = tarjeta,
+            colorTextoSecundario = textoSecundario,
+            colorAcento = acento,
+            crearFondo = { color, radio ->
+                crearFondo(color, radio)
+            },
+            cargarPortada = { imagen, manga, alto, radio ->
+                cargarPortada(imagen, manga, alto, radio)
+            },
+            crearTexto = { contenidoTexto, tamano, negrita ->
+                texto(contenidoTexto, tamano, negrita)
+            },
+            espacioEn = { contenedor, altura ->
+                espacioEn(contenedor, altura)
+            },
+            dp = { valor ->
+                dp(valor)
+            },
+            alTocar = {
+                mostrarSerie(serie)
+            }
+        )
     }
-
-return MangaContinueCard(
-    context = this,
-    serie = serie,
-    mensajeProgreso = mensajeProgreso,
-    colorTarjeta = tarjeta,
-    colorTextoSecundario = textoSecundario,
-    colorAcento = acento,
-    crearFondo = { color, radio ->
-        crearFondo(color, radio)
-    },
-    cargarPortada = { imagen, manga, alto, radio ->
-        cargarPortada(imagen, manga, alto, radio)
-    },
-    crearTexto = { contenidoTexto, tamano, negrita ->
-        texto(contenidoTexto, tamano, negrita)
-    },
-    espacioEn = { contenedor, altura ->
-        espacioEn(contenedor, altura)
-    },
-    dp = { valor ->
-        dp(valor)
-    },
-    alTocar = {
-        mostrarSerie(serie)
-    }
-)
-
-}
 
     private fun mostrarPantallaEspecial(esFavoritos: Boolean) {
         mostrandoTodos = false
@@ -832,6 +804,7 @@ return MangaContinueCard(
             if (esFavoritos) "Mis favoritos" else "Historial de lectura",
             false
         )
+
         mostrarCatalogoFiltrado()
     }
 
@@ -844,8 +817,8 @@ return MangaContinueCard(
                 mostrarInicio()
             }
         )
-        espacio(12)
 
+        espacio(12)
         contenido.addView(texto(titulo, 21f, true))
         espacio(10)
 
@@ -890,6 +863,7 @@ return MangaContinueCard(
                 dp(132),
                 LinearLayout.LayoutParams.WRAP_CONTENT
             )
+
             parametros.marginEnd = dp(10)
             fila.addView(crearTarjetaCarrusel(serie), parametros)
         }
@@ -899,28 +873,28 @@ return MangaContinueCard(
     }
 
     private fun crearTarjetaCarrusel(serie: Serie): View {
-return MangaCarouselCard(
-context = this,
-serie = serie,
-colorTarjeta = tarjeta,
-colorTextoSecundario = textoSecundario,
-crearFondo = { color, radio ->
-crearFondo(color, radio)
-},
-cargarPortada = { imagen, manga, alto, radio ->
-cargarPortada(imagen, manga, alto, radio)
-},
-crearTexto = { contenidoTexto, tamano, negrita ->
-texto(contenidoTexto, tamano, negrita)
-},
-dp = { valor ->
-dp(valor)
-},
-alTocar = {
-mostrarSerie(serie)
-}
-)
-}
+        return MangaCarouselCard(
+            context = this,
+            serie = serie,
+            colorTarjeta = tarjeta,
+            colorTextoSecundario = textoSecundario,
+            crearFondo = { color, radio ->
+                crearFondo(color, radio)
+            },
+            cargarPortada = { imagen, manga, alto, radio ->
+                cargarPortada(imagen, manga, alto, radio)
+            },
+            crearTexto = { contenidoTexto, tamano, negrita ->
+                texto(contenidoTexto, tamano, negrita)
+            },
+            dp = { valor ->
+                dp(valor)
+            },
+            alTocar = {
+                mostrarSerie(serie)
+            }
+        )
+    }
 
     // =====================================================
     // BUSCADOR
@@ -941,6 +915,7 @@ mostrarSerie(serie)
 
         if (lista.size > resultadosVisibles) {
             espacio(8)
+
             contenido.addView(
                 boton("Mostrar 21 más") {
                     resultadosVisibles += 21
@@ -951,6 +926,7 @@ mostrarSerie(serie)
 
         if (hayMasCatalogo || cargandoMasCatalogo || errorCargaCatalogo) {
             espacio(8)
+
             contenido.addView(
                 boton(
                     when {
@@ -1093,95 +1069,54 @@ mostrarSerie(serie)
 
     private fun agregarCuadriculaIncremental(lista: List<Serie>) {
         val destino = contenedorCuadricula ?: return
-        if (lista.isEmpty()) return
 
-        var indice = 0
+        val catalogoUi = MangaCatalog(
+            context = this,
+            dp = { valor -> dp(valor) },
+            crearTarjeta = { serie -> crearTarjetaCuadricula(serie) }
+        )
 
-        while (indice < lista.size) {
-            val fila = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.TOP
-            }
-
-            for (columna in 0 until 3) {
-                if (indice >= lista.size) {
-                    fila.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
-                    continue
-                }
-
-                val serie = lista[indice++]
-                val parametros = LinearLayout.LayoutParams(
-                    0,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    1f
-                )
-
-                parametros.setMargins(dp(3), dp(3), dp(3), dp(10))
-                fila.addView(crearTarjetaCuadricula(serie), parametros)
-            }
-
-            destino.addView(fila)
-        }
+        catalogoUi.agregarCuadriculaIncremental(destino, lista)
     }
 
     private fun agregarCuadricula(lista: List<Serie>) {
-        var indice = 0
+        val catalogoUi = MangaCatalog(
+            context = this,
+            dp = { valor -> dp(valor) },
+            crearTarjeta = { serie -> crearTarjetaCuadricula(serie) }
+        )
 
-        while (indice < lista.size) {
-            val fila = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.TOP
-            }
-
-            for (columna in 0 until 3) {
-                if (indice >= lista.size) {
-                    fila.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
-                    continue
-                }
-
-                val serie = lista[indice++]
-                val parametros = LinearLayout.LayoutParams(
-                    0,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    1f
-                )
-
-                parametros.setMargins(dp(3), dp(3), dp(3), dp(10))
-                fila.addView(crearTarjetaCuadricula(serie), parametros)
-            }
-
-            contenido.addView(fila)
-        }
+        catalogoUi.agregarCuadricula(contenido, lista)
     }
 
     private fun crearTarjetaCuadricula(serie: Serie): View {
-return MangaCard(
-context = this,
-serie = serie,
-colorTarjeta = tarjeta,
-colorTextoSecundario = textoSecundario,
-crearFondo = { color, radio ->
-crearFondo(color, radio)
-},
-cargarPortada = { imagen, manga, alto, radio ->
-cargarPortada(imagen, manga, alto, radio)
-},
-crearTexto = { contenido, tamano, negrita ->
-texto(contenido, tamano, negrita)
-},
-dp = { valor ->
-dp(valor)
-},
-alTocar = {
-if (mostrandoTodos && filtroActual.isBlank()) {
-posicionCatalogoGuardada = scrollPrincipal.scrollY
-restaurarPosicionCatalogo = true
-}
+        return MangaCard(
+            context = this,
+            serie = serie,
+            colorTarjeta = tarjeta,
+            colorTextoSecundario = textoSecundario,
+            crearFondo = { color, radio ->
+                crearFondo(color, radio)
+            },
+            cargarPortada = { imagen, manga, alto, radio ->
+                cargarPortada(imagen, manga, alto, radio)
+            },
+            crearTexto = { contenidoTexto, tamano, negrita ->
+                texto(contenidoTexto, tamano, negrita)
+            },
+            dp = { valor ->
+                dp(valor)
+            },
+            alTocar = {
+                if (mostrandoTodos && filtroActual.isBlank()) {
+                    posicionCatalogoGuardada = scrollPrincipal.scrollY
+                    restaurarPosicionCatalogo = true
+                }
 
-            mostrarSerie(serie)
-        }
-    )
-}
+                mostrarSerie(serie)
+            }
+        )
+    }
 
     // =====================================================
     // DETALLE Y CAPÍTULOS
@@ -1259,87 +1194,40 @@ restaurarPosicionCatalogo = true
             construirPantalla(serie.titulo, false)
         }
 
-        contenido.removeAllViews()
-
-        contenido.addView(
-            boton("← Volver al catálogo") {
+        MangaDetailScreen(
+            context = this,
+            serie = serie,
+            capitulos = capitulos,
+            esFavorito = esFavorito(serie),
+            crearTexto = { valor, tamano, negrita ->
+                texto(valor, tamano, negrita)
+            },
+            crearBoton = { etiqueta, accion ->
+                boton(etiqueta, accion)
+            },
+            crearFondo = { color, radio ->
+                crearFondo(color, radio)
+            },
+            colorTarjeta = tarjeta,
+            colorTextoSecundario = textoSecundario,
+            dp = { valor -> dp(valor) },
+            espacioEn = { contenedor, altura ->
+                espacioEn(contenedor, altura)
+            },
+            alVolver = {
                 mostrarInicio()
-            }
-        )
-
-        espacio(12)
-        contenido.addView(texto(serie.titulo, 22f, true))
-        espacio(6)
-
-        contenido.addView(
-            texto("Autor: ${serie.autor}", 14f, false).apply {
-                setTextColor(textoSecundario)
-            }
-        )
-
-        espacio(10)
-
-        contenido.addView(
-            boton(
-                if (esFavorito(serie)) {
-                    "★ Quitar de favoritos"
-                } else {
-                    "☆ Agregar a favoritos"
-                }
-            ) {
+            },
+            alAlternarFavorito = {
                 alternarFavorito(serie)
                 mostrarListaCapitulos(serie, capitulos)
+            },
+            alAbrirCapitulo = { capitulo ->
+                mostrarLector(serie, capitulo)
             }
-        )
-
-        espacio(14)
-        contenido.addView(texto("Capítulos (${capitulos.size})", 19f, true))
-        espacio(8)
-
-        if (capitulos.isEmpty()) {
-            contenido.addView(texto("No hay capítulos disponibles.", 15f, false))
-            return
-        }
-
-        for (capitulo in capitulos) {
-            val nombre =
-                "Capítulo ${capitulo.numero}" +
-                    if (capitulo.titulo.isNotBlank()) {
-                        " — ${capitulo.titulo}"
-                    } else {
-                        ""
-                    }
-
-            val elemento = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(dp(14), dp(14), dp(14), dp(14))
-                background = crearFondo(tarjeta, 12)
-                isClickable = true
-                isFocusable = true
-
-                setOnClickListener {
-                    mostrarLector(serie, capitulo)
-                }
-            }
-
-            elemento.addView(texto(nombre, 15f, true))
-            espacioEn(elemento, 5)
-
-            elemento.addView(
-                texto("${capitulo.totalPaginas} páginas", 12f, false).apply {
-                    setTextColor(textoSecundario)
-                }
-            )
-
-            val parametros = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            parametros.bottomMargin = dp(8)
-            contenido.addView(elemento, parametros)
-        }
+        ).construir(contenido)
     }
-        // =====================================================
+
+    // =====================================================
     // LECTOR: CARGA DE PÁGINAS
     // =====================================================
 
@@ -1373,6 +1261,7 @@ restaurarPosicionCatalogo = true
 
                     try {
                         val url = URL(direccion)
+
                         if (
                             url.protocol == "https" &&
                             url.host == "cdn.shademanga.com"
@@ -1417,12 +1306,15 @@ restaurarPosicionCatalogo = true
 
         if (paginas.isEmpty()) {
             construirPantalla("Lector", false)
+
             contenido.addView(
                 boton("← Volver a capítulos") {
                     salirDelLector()
                 }
             )
+
             espacio(12)
+
             contenido.addView(
                 texto(
                     "No hay páginas disponibles para este capítulo.",
@@ -1430,6 +1322,7 @@ restaurarPosicionCatalogo = true
                     false
                 )
             )
+
             return
         }
 
@@ -1502,8 +1395,10 @@ restaurarPosicionCatalogo = true
                 }
             ) {
                 guardarProgreso()
+
                 modoLectura =
                     if (modoLectura == "vertical") "pagina" else "vertical"
+
                 construirInterfazLector(serie, capitulo, paginas)
             }
         )
@@ -1671,6 +1566,7 @@ restaurarPosicionCatalogo = true
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             )
+
             parametros.bottomMargin = dp(3)
             columna.addView(imagen, parametros)
         }
@@ -1680,8 +1576,6 @@ restaurarPosicionCatalogo = true
 
         actualizarTextoProgreso(paginas.size)
 
-        // Recuperar la posición anterior cuando ya se hayan agregado
-        // suficientes páginas para alcanzar el desplazamiento guardado.
         columna.post {
             val scroll = scrollLector ?: return@post
 
@@ -1690,7 +1584,10 @@ restaurarPosicionCatalogo = true
                 val contenidoSuficiente =
                     columna.height >= alturaObjetivo + scroll.height
 
-                if (contenidoSuficiente || indiceCargaVertical >= paginas.size) {
+                if (
+                    contenidoSuficiente ||
+                    indiceCargaVertical >= paginas.size
+                ) {
                     scroll.scrollTo(0, alturaObjetivo)
                     restauracionVerticalPendiente = false
                     actualizarPaginaVisible()
@@ -1704,7 +1601,10 @@ restaurarPosicionCatalogo = true
             val distancia =
                 columna.bottom - (scroll.height + scroll.scrollY)
 
-            if (distancia < dp(900) && indiceCargaVertical < paginas.size) {
+            if (
+                distancia < dp(900) &&
+                indiceCargaVertical < paginas.size
+            ) {
                 cargarSiguienteLoteVertical(paginas)
             }
         }
@@ -1724,7 +1624,6 @@ restaurarPosicionCatalogo = true
 
         val imagen = ZoomableImageView(this).apply {
             adjustViewBounds = true
-            scaleType = ImageView.ScaleType.FIT_CENTER
             setBackgroundColor(Color.BLACK)
         }
 
@@ -1758,12 +1657,17 @@ restaurarPosicionCatalogo = true
                             abs(dx) > dp(70) &&
                             abs(dx) > abs(dy)
                         ) {
-                            if (dx < 0) avanzarPagina(paginas)
-                            else retrocederPagina(paginas)
+                            if (dx < 0) {
+                                avanzarPagina(paginas)
+                            } else {
+                                retrocederPagina(paginas)
+                            }
                         }
+
                         return true
                     }
                 }
+
                 return true
             }
         })
@@ -1823,7 +1727,8 @@ restaurarPosicionCatalogo = true
 
         paginaActual = paginaActual.coerceIn(0, paginas.lastIndex)
 
-        imagen.resetZoom()
+        imagen.restablecerZoom()
+
         imagen.load(paginas[paginaActual]) {
             crossfade(false)
             memoryCachePolicy(CachePolicy.ENABLED)
@@ -1860,95 +1765,6 @@ restaurarPosicionCatalogo = true
     }
 
     // =====================================================
-    // ZOOM CON PINZA
-    // =====================================================
-
-    private class ZoomableImageView(
-        context: android.content.Context
-    ) : ImageView(context) {
-
-        private var escala = 1f
-        private var detector: ScaleGestureDetector
-
-        private var desplazamientoX = 0f
-        private var desplazamientoY = 0f
-        private var ultimoX = 0f
-        private var ultimoY = 0f
-
-        init {
-            detector = ScaleGestureDetector(
-                context,
-                object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-                    override fun onScale(
-                        detector: ScaleGestureDetector
-                    ): Boolean {
-                        escala = (escala * detector.scaleFactor)
-                            .coerceIn(1f, 4f)
-                        aplicarTransformacion()
-                        return true
-                    }
-                }
-            )
-
-            scaleType = ScaleType.FIT_CENTER
-        }
-
-        override fun onTouchEvent(event: MotionEvent): Boolean {
-            detector.onTouchEvent(event)
-
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    ultimoX = event.x
-                    ultimoY = event.y
-                    parent?.requestDisallowInterceptTouchEvent(escala > 1f)
-                    return true
-                }
-
-                MotionEvent.ACTION_MOVE -> {
-                    if (escala > 1f && event.pointerCount == 1) {
-                        desplazamientoX += event.x - ultimoX
-                        desplazamientoY += event.y - ultimoY
-                        aplicarTransformacion()
-                        parent?.requestDisallowInterceptTouchEvent(true)
-                    }
-
-                    ultimoX = event.x
-                    ultimoY = event.y
-                    return true
-                }
-
-                MotionEvent.ACTION_UP,
-                MotionEvent.ACTION_CANCEL -> {
-                    parent?.requestDisallowInterceptTouchEvent(false)
-                    performClick()
-                    return true
-                }
-            }
-
-            return true
-        }
-
-        override fun performClick(): Boolean {
-            super.performClick()
-            return true
-        }
-
-        private fun aplicarTransformacion() {
-            scaleX = escala
-            scaleY = escala
-            translationX = desplazamientoX
-            translationY = desplazamientoY
-        }
-
-        fun resetZoom() {
-            escala = 1f
-            desplazamientoX = 0f
-            desplazamientoY = 0f
-            aplicarTransformacion()
-        }
-    }
-
-    // =====================================================
     // SALIR DEL LECTOR Y PANTALLA COMPLETA
     // =====================================================
 
@@ -1967,11 +1783,11 @@ restaurarPosicionCatalogo = true
         mostrarListaCapitulos(serie, capitulosActuales)
     }
 
+    @Suppress("DEPRECATION")
     private fun restaurarPantallaCompleta(activa: Boolean) {
         lectorPantallaCompleta = activa
 
         if (activa) {
-            @Suppress("DEPRECATION")
             window.decorView.systemUiVisibility = (
                 View.SYSTEM_UI_FLAG_FULLSCREEN or
                     View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
@@ -1985,7 +1801,6 @@ restaurarPosicionCatalogo = true
                 WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
             )
         } else {
-            @Suppress("DEPRECATION")
             window.decorView.systemUiVisibility =
                 View.SYSTEM_UI_FLAG_VISIBLE
 
@@ -2049,6 +1864,7 @@ restaurarPosicionCatalogo = true
 
                 for (i in 0 until valor.length()) {
                     val genero = valor.optString(i, "").trim()
+
                     if (genero.isNotBlank() && genero != "null") {
                         lista.add(genero)
                     }
