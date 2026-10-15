@@ -42,6 +42,9 @@ class AnimeCatalogScreen(
     private val campoGenero = AutoCompleteTextView(context)
     private val campoTipo = AutoCompleteTextView(context)
     private val campoEstado = AutoCompleteTextView(context)
+    private val opcionesGenero = linkedSetOf("Todos")
+    private val opcionesTipo = linkedSetOf("Todos")
+    private val opcionesEstado = linkedSetOf("Todos")
     private val botonMas = TextView(context)
     private val resumen = TextView(context)
 
@@ -108,17 +111,9 @@ class AnimeCatalogScreen(
             orientation = HORIZONTAL
             setPadding(dp(16), 0, dp(16), dp(8))
         }
-        configurarSelector(campoGenero, "Género", listOf(
-            "Todos", "Acción", "Aventura", "Comedia", "Drama", "Fantasía",
-            "Romance", "Ciencia ficción", "Suspenso", "Terror", "Deportes",
-            "Misterio", "Sobrenatural", "Recuentos de la vida"
-        ))
-        configurarSelector(campoTipo, "Tipo", listOf(
-            "Todos", "TV", "Película", "OVA", "ONA", "Especial"
-        ))
-        configurarSelector(campoEstado, "Estado", listOf(
-            "Todos", "En emisión", "Finalizado", "Próximamente"
-        ))
+        configurarSelector(campoGenero, "Género", opcionesGenero.toList())
+        configurarSelector(campoTipo, "Tipo", opcionesTipo.toList())
+        configurarSelector(campoEstado, "Estado", opcionesEstado.toList())
         listOf(campoGenero, campoTipo, campoEstado).forEach { campo ->
             filaFiltros.addView(campo, LayoutParams(0, dp(42), 1f).apply {
                 setMargins(dp(2), 0, dp(2), 0)
@@ -264,6 +259,23 @@ class AnimeCatalogScreen(
         }
     }
 
+    private fun actualizarOpcionesFiltros(animes: List<Anime>) {
+        animes.forEach { anime ->
+            anime.tipo.trim().takeIf { it.isNotBlank() }?.let { opcionesTipo.add(it) }
+            anime.estado.trim().takeIf { it.isNotBlank() }?.let { opcionesEstado.add(it) }
+            anime.generos.split(",").map { it.trim() }.filter { it.isNotBlank() }.forEach { opcionesGenero.add(it) }
+        }
+        actualizarAdaptador(campoGenero, opcionesGenero)
+        actualizarAdaptador(campoTipo, opcionesTipo)
+        actualizarAdaptador(campoEstado, opcionesEstado)
+    }
+
+    private fun actualizarAdaptador(campo: AutoCompleteTextView, opciones: Set<String>) {
+        val seleccion = campo.text.toString()
+        campo.setAdapter(ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, opciones.toList()))
+        if (seleccion.isNotBlank()) campo.setText(seleccion, false)
+    }
+
     private fun ejecutarFiltros() {
         val busqueda = campoBusqueda.text.toString().trim()
         ultimaBusqueda = busqueda
@@ -284,6 +296,7 @@ class AnimeCatalogScreen(
         }
 
         val animesSeguros = animes.filterNot { it.esMayorDeEdad }
+        actualizarOpcionesFiltros(animesSeguros)
         resumen.visibility = VISIBLE
         resumen.text = "Mostrando ${animesSeguros.size} resultados de ${total.coerceAtLeast(animesSeguros.size)} · contenido adulto excluido"
 
