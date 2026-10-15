@@ -1101,7 +1101,7 @@ class MainActivity : Activity() {
                 )
 
                 val array = JSONArray(respuesta)
-                val resultado = mangaApi.analizarCapitulos(array)
+                val resultado = mangaApi.analizarCapitulos(array).toMutableList()
 
                 runOnUiThread {
                     if (
