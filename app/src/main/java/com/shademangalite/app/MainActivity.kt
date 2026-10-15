@@ -266,7 +266,16 @@ class MainActivity : Activity() {
         val encabezado = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(18), dp(18), dp(18), dp(14))
-            setBackgroundColor(Color.rgb(25, 20, 39))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(Color.rgb(31, 23, 53), Color.rgb(19, 28, 45))
+            ).apply {
+                cornerRadii = floatArrayOf(
+                    0f, 0f, 0f, 0f,
+                    dp(20).toFloat(), dp(20).toFloat(),
+                    dp(20).toFloat(), dp(20).toFloat()
+                )
+            }
         }
 
         encabezado.addView(
@@ -276,7 +285,7 @@ class MainActivity : Activity() {
         )
 
         encabezado.addView(
-            texto("TU PRÓXIMA LECTURA EMPIEZA ACÁ", 10f, true).apply {
+            texto("ANIMEXSHADOW  •  MANGA", 10f, true).apply {
                 setTextColor(acento)
                 letterSpacing = 0.08f
             }
@@ -290,7 +299,9 @@ class MainActivity : Activity() {
                 textSize = 15f
                 setSingleLine(true)
                 setPadding(dp(12), dp(8), dp(12), dp(8))
-                background = crearFondo(tarjeta, 12)
+                background = crearFondo(tarjeta, 14).apply {
+                    setStroke(dp(1), Color.rgb(61, 52, 81))
+                }
             }
 
             val parametros = LinearLayout.LayoutParams(
