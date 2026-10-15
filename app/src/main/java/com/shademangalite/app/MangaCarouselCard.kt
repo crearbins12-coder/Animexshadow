@@ -13,7 +13,6 @@ import android.widget.TextView
 class MangaCarouselCard(
 context: Context,
 private val serie: Serie,
-private val tieneAnime: Boolean = false,
 private val colorTarjeta: Int,
 private val colorTextoSecundario: Int,
 private val crearFondo: (Int, Int) -> android.graphics.drawable.GradientDrawable,
@@ -57,29 +56,6 @@ init {
         FrameLayout.LayoutParams.MATCH_PARENT
     ))
     cargarPortada(portada, serie, 185, 8)
-
-    val etiqueta = TextView(context).apply {
-        text = if (tieneAnime) "🎬 ANIME" else "✦  ANIMEX"
-        textSize = 8.5f
-        letterSpacing = 0.08f
-        setTypeface(null, android.graphics.Typeface.BOLD)
-        setTextColor(Color.rgb(224, 207, 255))
-        setPadding(dp(7), dp(5), dp(7), dp(5))
-        background = GradientDrawable().apply {
-            setColor(Color.argb(225, 32, 22, 51))
-            cornerRadius = dp(8).toFloat()
-            setStroke(dp(1), Color.rgb(127, 76, 190))
-        }
-        elevation = dp(4).toFloat()
-    }
-    marcoPortada.addView(etiqueta, FrameLayout.LayoutParams(
-        FrameLayout.LayoutParams.WRAP_CONTENT,
-        FrameLayout.LayoutParams.WRAP_CONTENT,
-        Gravity.TOP or Gravity.START
-    ).apply {
-        leftMargin = dp(7)
-        topMargin = dp(7)
-    })
 
     addView(marcoPortada, LayoutParams(
         LayoutParams.MATCH_PARENT,
