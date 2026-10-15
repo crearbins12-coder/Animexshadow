@@ -410,17 +410,18 @@ class MainActivity : Activity() {
         animeActual = null
         lectorActivo = false
 
-        lateinit var pantalla: AnimeCatalogScreen
-        pantalla = AnimeCatalogScreen(
+        val referenciaPantalla = arrayOfNulls<AnimeCatalogScreen>(1)
+        val pantalla = AnimeCatalogScreen(
             context = this,
             colorFondo = fondo,
             colorTarjeta = tarjeta,
             colorAcento = acento,
             colorTexto = textoColor,
             colorSecundario = textoSecundario,
-            onBuscar = { consulta -> cargarCatalogoAnime(pantalla, consulta) },
+            onBuscar = { consulta -> referenciaPantalla[0]?.let { cargarCatalogoAnime(it, consulta) } },
             onSeleccionarAnime = { anime -> mostrarDetalleAnime(anime) }
         )
+        referenciaPantalla[0] = pantalla
 
         val raizAnime = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
