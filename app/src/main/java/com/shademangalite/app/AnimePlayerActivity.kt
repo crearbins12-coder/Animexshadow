@@ -33,6 +33,7 @@ class AnimePlayerActivity : Activity() {
         val url = intent.getStringExtra(EXTRA_URL).orEmpty()
         val tipo = intent.getStringExtra(EXTRA_TIPO).orEmpty().lowercase()
         val titulo = intent.getStringExtra(EXTRA_TITULO).orEmpty().ifBlank { "Anime" }
+        val servidor = intent.getStringExtra(EXTRA_SERVIDOR).orEmpty()
 
         if (!url.startsWith("https://") || (tipo != "mp4" && tipo != "hls")) {
             Toast.makeText(this, "Enlace de reproducción no válido.", Toast.LENGTH_LONG).show()
@@ -79,7 +80,7 @@ class AnimePlayerActivity : Activity() {
         val item = MediaItem.Builder()
             .setUri(url)
             .setMimeType(mime)
-            .setMediaMetadata(MediaMetadata.Builder().setTitle(titulo).build())
+            .setMediaMetadata(MediaMetadata.Builder().setTitle(titulo).setArtist(servidor).build())
             .build()
         exo.setMediaItem(item)
         exo.prepare()
