@@ -404,6 +404,9 @@ class MainActivity : Activity() {
         generacionAnime++
         mostrandoAnime = true
         mostrandoDetalleAnime = false
+        mostrandoTodos = false
+        mostrandoFavoritos = false
+        mostrandoHistorial = false
         animeActual = null
         lectorActivo = false
 
@@ -433,9 +436,9 @@ class MainActivity : Activity() {
                 mostrandoAnime = true,
                 onAnime = { mostrarAnime() },
                 onInicio = { mostrarInicio() },
-                onMangas = { abrirTodosLosMangas() },
-                onFavoritos = { mostrarPantallaEspecial(true) },
-                onHistorial = { mostrarPantallaEspecial(false) }
+                onMangas = { mostrandoAnime = false; mostrandoDetalleAnime = false; abrirTodosLosMangas() },
+                onFavoritos = { mostrandoAnime = false; mostrandoDetalleAnime = false; mostrarPantallaEspecial(true) },
+                onHistorial = { mostrandoAnime = false; mostrandoDetalleAnime = false; mostrarPantallaEspecial(false) }
             ))
         }
         setContentView(raizAnime)
