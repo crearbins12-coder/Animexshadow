@@ -978,28 +978,70 @@ class MainActivity : Activity() {
             }
         }
 
-        panelDescubrimiento.addView(TextView(this).apply {
+        val mangaDestacado = catalogo.firstOrNull()
+        val filaDestacada = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        val portadaDestacada = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            contentDescription = mangaDestacado?.let { "Portada de ${it.titulo}" } ?: "Manga destacado"
+            background = crearFondo(Color.rgb(39, 31, 54), 12)
+        }
+        if (mangaDestacado != null) {
+            cargarPortada(portadaDestacada, mangaDestacado, 144, 12)
+        }
+        filaDestacada.addView(portadaDestacada, LinearLayout.LayoutParams(
+            dp(104),
+            dp(144)
+        ))
+
+        val datosDestacados = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(13), 0, 0, 0)
+        }
+        datosDestacados.addView(TextView(this).apply {
             text = "✦  NEON DISCOVERY"
             textSize = 10f
-            letterSpacing = 0.15f
+            letterSpacing = 0.12f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.rgb(105, 224, 255))
         })
-
-        panelDescubrimiento.addView(TextView(this).apply {
-            text = "Tu próxima obsesión\nempieza acá."
-            textSize = 22f
+        datosDestacados.addView(TextView(this).apply {
+            text = mangaDestacado?.titulo ?: "Tu próxima obsesión"
+            textSize = 19f
+            maxLines = 3
+            ellipsize = android.text.TextUtils.TruncateAt.END
             setLineSpacing(0f, 0.98f)
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.WHITE)
-            setPadding(0, dp(7), 0, dp(5))
+            setPadding(0, dp(8), 0, dp(6))
         })
-
-        panelDescubrimiento.addView(TextView(this).apply {
-            text = "Explorá historias, guardá favoritas y armá tu propia colección."
-            textSize = 12f
+        datosDestacados.addView(TextView(this).apply {
+            text = mangaDestacado?.let {
+                if (it.genero.isNotBlank()) it.genero else "Una historia para descubrir"
+            } ?: "Historias para descubrir"
+            textSize = 11f
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
             setTextColor(Color.rgb(190, 194, 216))
         })
+        datosDestacados.addView(TextView(this).apply {
+            text = "VER MANGA  ↗"
+            textSize = 10f
+            letterSpacing = 0.06f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.rgb(105, 224, 255))
+            setPadding(0, dp(12), 0, 0)
+        })
+        filaDestacada.addView(datosDestacados, LinearLayout.LayoutParams(
+            0,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            1f
+        ))
+        panelDescubrimiento.addView(filaDestacada)
 
         val filaEstadisticas = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
