@@ -265,28 +265,48 @@ class MainActivity : Activity() {
 
         val encabezado = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(20), dp(20), dp(18))
+            setPadding(dp(20), dp(20), dp(20), dp(19))
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(55, 31, 87), Color.rgb(25, 29, 53), Color.rgb(17, 22, 36))
+                intArrayOf(
+                    Color.rgb(47, 20, 78),
+                    Color.rgb(30, 25, 62),
+                    Color.rgb(13, 21, 38)
+                )
             ).apply {
-                cornerRadius = dp(24).toFloat()
-                setStroke(dp(1), Color.rgb(78, 57, 112))
+                cornerRadius = dp(26).toFloat()
+                setStroke(dp(1), Color.rgb(112, 62, 180))
             }
-            elevation = dp(3).toFloat()
+            elevation = dp(7).toFloat()
         }
 
-        encabezado.addView(
-            texto("✦  ANIMEXSHADOW  /  MANGA", 10f, true).apply {
-                setTextColor(Color.rgb(211, 166, 255))
-                letterSpacing = 0.12f
+        val insignia = TextView(this).apply {
+            text = "✦  ANIMEXSHADOW  /  MANGA"
+            textSize = 10f
+            letterSpacing = 0.14f
+            typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
+            setTextColor(Color.rgb(226, 202, 255))
+            gravity = Gravity.CENTER
+            setPadding(dp(11), dp(7), dp(11), dp(7))
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(47, 31, 72))
+                cornerRadius = dp(30).toFloat()
+                setStroke(dp(1), Color.rgb(133, 74, 215))
             }
+        }
+        encabezado.addView(
+            insignia,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
         )
 
         encabezado.addView(
-            texto(titulo, 29f, true).apply {
+            texto(titulo, 31f, true).apply {
                 setTextColor(Color.WHITE)
-                setPadding(0, dp(7), 0, dp(2))
+                letterSpacing = -0.015f
+                setPadding(0, dp(11), 0, dp(3))
             }
         )
 
@@ -302,6 +322,35 @@ class MainActivity : Activity() {
                 setTextColor(Color.rgb(190, 183, 208))
             }
         )
+
+        val filaEtiquetas = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(13), 0, 0)
+        }
+
+        listOf("⚡ NEON EDITION", "✦ NUEVAS HISTORIAS").forEachIndexed { indice, etiqueta ->
+            val chip = TextView(this).apply {
+                text = etiqueta
+                textSize = 9f
+                letterSpacing = 0.04f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(if (indice == 0) Color.rgb(107, 225, 255) else Color.rgb(219, 184, 255))
+                setPadding(dp(9), dp(7), dp(9), dp(7))
+                background = GradientDrawable().apply {
+                    setColor(if (indice == 0) Color.rgb(17, 43, 58) else Color.rgb(43, 27, 63))
+                    cornerRadius = dp(9).toFloat()
+                    setStroke(dp(1), if (indice == 0) Color.rgb(38, 117, 148) else Color.rgb(104, 57, 145))
+                }
+            }
+            filaEtiquetas.addView(chip, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                if (indice > 0) leftMargin = dp(8)
+            })
+        }
+        encabezado.addView(filaEtiquetas)
 
         if (conBuscador) {
             buscador = EditText(this).apply {
