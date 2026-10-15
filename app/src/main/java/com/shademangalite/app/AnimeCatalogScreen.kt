@@ -48,16 +48,16 @@ class AnimeCatalogScreen(
         agregarEncabezado()
 
         campoBusqueda.apply {
-            hint = "⌕  Buscar anime, película..."
+            hint = "⌕  Buscar anime, película o serie..."
             textSize = 14f
             setSingleLine(true)
             setTextColor(colorTexto)
             setHintTextColor(colorSecundario)
             setPadding(dp(14), dp(8), dp(14), dp(8))
             background = GradientDrawable().apply {
-                setColor(Color.rgb(27, 25, 39))
-                cornerRadius = dp(14).toFloat()
-                setStroke(dp(1), Color.rgb(61, 52, 81))
+                setColor(Color.rgb(27, 25, 41))
+                cornerRadius = dp(15).toFloat()
+                setStroke(dp(1), Color.rgb(91, 67, 126))
             }
             contentDescription = "Buscar anime"
         }
@@ -88,6 +88,7 @@ class AnimeCatalogScreen(
             contentDescription = "Ejecutar búsqueda"
             isClickable = true
             isFocusable = true
+            elevation = dp(3).toFloat()
             setOnClickListener { ejecutarBusqueda(campoBusqueda.text.toString()) }
         }
         filaBusqueda.addView(campoBusqueda, LayoutParams(0, dp(46), 1f))
@@ -145,21 +146,18 @@ class AnimeCatalogScreen(
     private fun agregarEncabezado() {
         val encabezado = LinearLayout(context).apply {
             orientation = VERTICAL
-            setPadding(dp(18), dp(18), dp(18), dp(16))
+            setPadding(dp(20), dp(20), dp(20), dp(18))
             background = GradientDrawable(
                 GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(Color.rgb(31, 23, 53), Color.rgb(19, 28, 45))
+                intArrayOf(Color.rgb(55, 31, 87), Color.rgb(25, 29, 53), Color.rgb(17, 22, 36))
             ).apply {
-                cornerRadii = floatArrayOf(
-                    0f, 0f, 0f, 0f,
-                    dp(20).toFloat(), dp(20).toFloat(),
-                    dp(20).toFloat(), dp(20).toFloat()
-                )
+                cornerRadius = dp(24).toFloat()
+                setStroke(dp(1), Color.rgb(78, 57, 112))
             }
         }
 
         encabezado.addView(TextView(context).apply {
-            text = "ANIMEXSHADOW  •  ANIME"
+            text = "✦  ANIMEXSHADOW  /  ANIME"
             textSize = 10f
             letterSpacing = 0.14f
             setTypeface(null, Typeface.BOLD)
@@ -168,7 +166,7 @@ class AnimeCatalogScreen(
 
         encabezado.addView(TextView(context).apply {
             text = "Tu próximo\nanime favorito."
-            textSize = 29f
+            textSize = 30f
             setLineSpacing(0f, 0.96f)
             setTypeface(null, Typeface.BOLD)
             setTextColor(colorTexto)
@@ -176,7 +174,7 @@ class AnimeCatalogScreen(
         })
 
         encabezado.addView(TextView(context).apply {
-            text = "Explorá series, películas y episodios"
+            text = "Historias nuevas para maratonear."
             textSize = 13f
             setTextColor(colorSecundario)
             setPadding(0, dp(3), 0, 0)
@@ -188,9 +186,9 @@ class AnimeCatalogScreen(
                 LayoutParams.MATCH_PARENT,
                 LayoutParams.WRAP_CONTENT
             ).apply {
-                leftMargin = dp(10)
-                rightMargin = dp(10)
-                topMargin = dp(8)
+                leftMargin = dp(12)
+                rightMargin = dp(12)
+                topMargin = dp(10)
                 bottomMargin = dp(12)
             }
         )
@@ -275,11 +273,11 @@ class AnimeCatalogScreen(
         val tarjeta = LinearLayout(context).apply {
             orientation = VERTICAL
             gravity = Gravity.TOP
-            setPadding(dp(5), dp(5), dp(5), dp(9))
+            setPadding(dp(6), dp(6), dp(6), dp(10))
             background = GradientDrawable().apply {
                 setColor(Color.rgb(27, 24, 39))
-                cornerRadius = dp(14).toFloat()
-                setStroke(dp(1), Color.rgb(47, 40, 62))
+                cornerRadius = dp(16).toFloat()
+                setStroke(dp(1), Color.rgb(72, 54, 101))
             }
             isClickable = true
             isFocusable = true
@@ -299,7 +297,7 @@ class AnimeCatalogScreen(
             portada,
             LayoutParams(
                 LayoutParams.MATCH_PARENT,
-                dp(166)
+                dp(174)
             )
         )
 
