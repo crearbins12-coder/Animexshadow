@@ -48,13 +48,18 @@ class AnimeCatalogScreen(
         agregarEncabezado()
 
         campoBusqueda.apply {
-            hint = "Buscar anime..."
-            textSize = 15f
+            hint = "⌕  Buscar anime, película..."
+            textSize = 14f
             setSingleLine(true)
             setTextColor(colorTexto)
             setHintTextColor(colorSecundario)
-            setPadding(dp(12), dp(8), dp(12), dp(8))
-            background = fondoRedondeado(colorTarjeta, 12)
+            setPadding(dp(14), dp(8), dp(14), dp(8))
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(27, 25, 39))
+                cornerRadius = dp(14).toFloat()
+                setStroke(dp(1), Color.rgb(61, 52, 81))
+            }
+            contentDescription = "Buscar anime"
         }
 
         // El buscador y el botón se agregan juntos para que la búsqueda también funcione sin la tecla Enter.
@@ -69,12 +74,18 @@ class AnimeCatalogScreen(
             true
         }
         botonBuscar.apply {
-            text = "Buscar"
-            textSize = 14f
+            text = "IR"
+            textSize = 12f
+            letterSpacing = 0.08f
+            setTypeface(null, Typeface.BOLD)
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
-            setPadding(dp(14), dp(10), dp(14), dp(10))
-            background = fondoRedondeado(colorAcento, 10)
+            setPadding(dp(16), dp(10), dp(16), dp(10))
+            background = GradientDrawable().apply {
+                setColor(colorAcento)
+                cornerRadius = dp(13).toFloat()
+            }
+            contentDescription = "Ejecutar búsqueda"
             isClickable = true
             isFocusable = true
             setOnClickListener { ejecutarBusqueda(campoBusqueda.text.toString()) }
@@ -134,22 +145,41 @@ class AnimeCatalogScreen(
     private fun agregarEncabezado() {
         val encabezado = LinearLayout(context).apply {
             orientation = VERTICAL
-            setPadding(dp(18), dp(20), dp(18), dp(12))
-            setBackgroundColor(Color.rgb(25, 20, 39))
+            setPadding(dp(18), dp(18), dp(18), dp(16))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(Color.rgb(31, 23, 53), Color.rgb(19, 28, 45))
+            ).apply {
+                cornerRadii = floatArrayOf(
+                    0f, 0f, 0f, 0f,
+                    dp(20).toFloat(), dp(20).toFloat(),
+                    dp(20).toFloat(), dp(20).toFloat()
+                )
+            }
         }
 
         encabezado.addView(TextView(context).apply {
-            text = "Anime"
-            textSize = 27f
+            text = "ANIMEXSHADOW  •  ANIME"
+            textSize = 10f
+            letterSpacing = 0.14f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(colorAcento)
+        })
+
+        encabezado.addView(TextView(context).apply {
+            text = "Tu próximo\\nanime favorito."
+            textSize = 29f
+            setLineSpacing(0f, 0.96f)
             setTypeface(null, Typeface.BOLD)
             setTextColor(colorTexto)
+            setPadding(0, dp(7), 0, dp(3))
         })
 
         encabezado.addView(TextView(context).apply {
             text = "Explorá series, películas y episodios"
-            textSize = 12f
+            textSize = 13f
             setTextColor(colorSecundario)
-            setPadding(0, dp(4), 0, 0)
+            setPadding(0, dp(3), 0, 0)
         })
 
         addView(
@@ -157,7 +187,12 @@ class AnimeCatalogScreen(
             LayoutParams(
                 LayoutParams.MATCH_PARENT,
                 LayoutParams.WRAP_CONTENT
-            )
+            ).apply {
+                leftMargin = dp(10)
+                rightMargin = dp(10)
+                topMargin = dp(8)
+                bottomMargin = dp(12)
+            }
         )
     }
 
@@ -240,11 +275,15 @@ class AnimeCatalogScreen(
         val tarjeta = LinearLayout(context).apply {
             orientation = VERTICAL
             gravity = Gravity.TOP
-            setPadding(dp(5), dp(5), dp(5), dp(8))
-            background = fondoRedondeado(colorTarjeta, 10)
+            setPadding(dp(5), dp(5), dp(5), dp(9))
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(27, 24, 39))
+                cornerRadius = dp(14).toFloat()
+                setStroke(dp(1), Color.rgb(47, 40, 62))
+            }
             isClickable = true
             isFocusable = true
-            contentDescription = anime.titulo
+            contentDescription = "Abrir ${anime.titulo}"
             setOnClickListener {
                 onSeleccionarAnime(anime)
             }
@@ -260,7 +299,7 @@ class AnimeCatalogScreen(
             portada,
             LayoutParams(
                 LayoutParams.MATCH_PARENT,
-                dp(155)
+                dp(166)
             )
         )
 
@@ -282,7 +321,8 @@ class AnimeCatalogScreen(
             setTypeface(null, Typeface.BOLD)
             setTextColor(colorTexto)
             maxLines = 2
-            setPadding(dp(2), dp(7), dp(2), dp(2))
+            minLines = 2
+            setPadding(dp(3), dp(8), dp(3), dp(2))
         })
 
         tarjeta.addView(TextView(context).apply {
