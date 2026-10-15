@@ -12,22 +12,24 @@ private val tiempoLectura: Int = 20000
 ) {
 
 fun consultar(ruta: String): JSONObject {
-    val respuesta = consultarTexto(ruta)
-    return JSONObject(respuesta)
+    return JSONObject(consultarTexto(ruta))
 }
 
 fun consultarArray(ruta: String): JSONArray {
-    val respuesta = consultarTexto(ruta)
-    return JSONArray(respuesta)
+    return JSONArray(consultarTexto(ruta))
 }
 
 fun consultarTexto(ruta: String): String {
-    require(ruta.startsWith("/")) {
+    require(ruta.startsWith("/") && !ruta.startsWith("//")) {
         "La ruta debe comenzar con /"
     }
 
     val base = URL(apiBase)
-    require(base.protocol == "https" && base.host == "shademanga.com") {
+
+    require(
+        base.protocol == "https" &&
+            base.host.equals("shademanga.com", ignoreCase = true)
+    ) {
         "Servidor no permitido"
     }
 
@@ -35,8 +37,9 @@ fun consultarTexto(ruta: String): String {
 
     require(
         url.protocol == "https" &&
-            url.host == base.host &&
-            url.port == base.port
+            url.host.equals(base.host, ignoreCase = true) &&
+            url.port == base.port &&
+            url.userInfo == null
     ) {
         "Destino no permitido"
     }
@@ -47,24 +50,26 @@ fun consultarTexto(ruta: String): String {
         conexion.requestMethod = "GET"
         conexion.connectTimeout = tiempoConexion
         conexion.readTimeout = tiempoLectura
-        conexion.setRequestProperty(
-            "Accept",
-            "application/json"
-        )
-        conexion.setRequestProperty(
-            "User-Agent",
-            "ShadeMangaLite/1.0"
-        )
+        conexion.instanceFollowRedirects = false
+        conexion.setRequestProperty("Accept", "application/json")
+        conexion.setRequestProperty("User-Agent", "ShadeMangaLite/1.0")
 
         val codigo = conexion.responseCode
+
+        if (codigo in 300..399) {
+            throw IllegalStateException(
+                "La API respondió con una redirección HTTP $codigo"
+            )
+        }
 
         val flujo = if (codigo in 200..299) {
             conexion.inputStream
         } else {
             conexion.errorStream
-        } ?: throw IllegalStateException(
-            "La API no devolvió una respuesta. Código HTTP: $codigo"
-        )
+                ?: throw IllegalStateException(
+                    "Error HTTP $codigo: la API no devolvió detalles"
+                )
+        }
 
         val cuerpo = flujo.bufferedReader(Charsets.UTF_8).use {
             it.readText()
@@ -88,11 +93,26 @@ fun analizarSeries(array: JSONArray): List<Serie> {
     for (i in 0 until array.length()) {
         val objeto = array.optJSONObject(i) ?: continue
 
-        val id = objeto.optString("id")
-        val titulo = objeto.optString("titulo")
+        val id = objeto.optString("id").trim()
+        val titulo = objeto.optString("titulo").trim()
 
-        if (id.isBlank() || titulo.isBlank()) {
-            continue
+        if (id.isBlank() || titulo.isBlank()) continue
+
+        val generos = when (val valor = objeto.opt("generos")) {
+            is JSONArray -> (0 until valor.length())
+                .mapNotNull { indice ->
+                    valor.optString(indice)
+                        .takeIf { it.isNotBlank() }
+                }
+
+            is String -> valor.split(",")
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+
+            else -> {
+                val genero = objeto.optString("genero")
+                if (genero.isBlank()) emptyList() else listOf(genero)
+            }
         }
 
         resultado.add(
@@ -102,8 +122,15 @@ fun analizarSeries(array: JSONArray): List<Serie> {
                 titulo = titulo,
                 autor = objeto.optString("autor"),
                 portadaUrl = objeto.optString("portadaUrl"),
-                capitulos = objeto.optInt("capitulos", 0),
-                genero = objeto.optString("genero")
+                totalCapitulos = objeto.optInt(
+                    "totalCapitulos",
+                    objeto.optInt("capitulos", 0)
+                ),
+                generos = generos,
+                esMayorDeEdad = objeto.optBoolean(
+                    "esMayorDeEdad",
+                    false
+                )
             )
         )
     }
@@ -117,19 +144,20 @@ fun analizarCapitulos(array: JSONArray): List<Capitulo> {
     for (i in 0 until array.length()) {
         val objeto = array.optJSONObject(i) ?: continue
 
-        val id = objeto.optString("id")
-
-        if (id.isBlank()) {
-            continue
-        }
+        val id = objeto.optString("id").trim()
+        if (id.isBlank()) continue
 
         resultado.add(
             Capitulo(
                 id = id,
                 publicId = objeto.optString("publicId"),
-                numero = objeto.optString("numero"),
+                numeroCapitulo = objeto.optString(
+                    "numeroCapitulo",
+                    objeto.optString("numero")
+                ),
                 titulo = objeto.optString("titulo"),
-                totalPaginas = objeto.optInt("totalPaginas", 0)
+                totalPaginas = objeto.optInt("totalPaginas", 0),
+                visible = objeto.optBoolean("visible", true)
             )
         )
     }
@@ -152,19 +180,23 @@ fun analizarPaginas(array: JSONArray): List<String> {
 
         if (valor.isBlank()) continue
 
-        val url = runCatching {
-            URL(valor)
-        }.getOrNull() ?: continue
+        val url = runCatching { URL(valor) }.getOrNull() ?: continue
 
         if (
             url.protocol == "https" &&
-            url.host.equals("cdn.shademanga.com", ignoreCase = true)
+            url.host.equals("cdn.shademanga.com", ignoreCase = true) &&
+            url.userInfo == null
         ) {
             resultado.add(url.toString())
         }
     }
 
     return resultado
+}
+
+fun analizarPaginas(respuesta: JSONObject): List<String> {
+    val paginas = respuesta.optJSONArray("paginas") ?: return emptyList()
+    return analizarPaginas(paginas)
 }
 
 }
