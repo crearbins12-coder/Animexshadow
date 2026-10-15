@@ -1194,11 +1194,12 @@ class MainActivity : Activity() {
                 )
 
                 val objeto = JSONObject(respuesta)
-                val paginas = mangaApi.analizarPaginas(objeto)
 
-                if (paginas.isEmpty()) {
-                    throw Exception("La API no devolvió páginas válidas.")
+                if (!objeto.has("paginas")) {
+                    throw Exception("La API no devolvió la lista de páginas.")
                 }
+
+                val paginas = mangaApi.analizarPaginas(objeto)
 
                 runOnUiThread {
                     if (
