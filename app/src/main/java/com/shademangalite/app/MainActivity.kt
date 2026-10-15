@@ -1288,24 +1288,38 @@ class MainActivity : Activity() {
         ejecutor.execute {
             val coincidencias = mutableListOf<Triple<Serie, Anime, Int>>()
             try {
-                // En vez de buscar cada manga por separado (el buscador de la API
-                // puede devolver cero resultados), cargamos el catálogo de anime
-                // y comparamos títulos localmente.
-                val catalogoAnime = mutableListOf<Anime>()
-                var totalAnime = 0
-                var paginaAnime = 1
-                do {
-                    val pagina = animeApi.obtenerCatalogo(
-                        pagina = paginaAnime,
-                        tamanoPagina = 100,
-                        excluirAdultos = true
-                    )
-                    catalogoAnime.addAll(pagina.items)
-                    totalAnime = pagina.total
-                    paginaAnime++
-                } while (paginaAnime <= 3 && catalogoAnime.size < totalAnime && pagina.items.isNotEmpty())
+                // Cargamos varias páginas de ambos catálogos: la lista principal
+                // suele tener solo la primera página y eso dejaba fuera muchas obras.
+                val todosLosMangas = mutableListOf<Serie>()
+                val idsManga = mutableSetOf<String>()
+                for (paginaManga in 1..5) {
+                    val paginaJson = runCatching {
+                        JSONArray(consultarApi("/api/series-locales?pageSize=100&page=$paginaManga"))
+                    }.getOrNull() ?: break
+                    val paginaSeries = analizarSeries(paginaJson)
+                    if (paginaSeries.isEmpty()) break
+                    paginaSeries.forEach { if (idsManga.add(it.id)) todosLosMangas.add(it) }
+                    if (paginaSeries.size < 100) break
+                }
 
-                val candidatos = catalogo.filter { !it.esMayorDeEdad }.take(100)
+                val catalogoAnime = mutableListOf<Anime>()
+                val idsAnime = mutableSetOf<String>()
+                var totalAnime = 0
+                for (paginaAnime in 1..5) {
+                    val pagina = runCatching {
+                        animeApi.obtenerCatalogo(
+                            pagina = paginaAnime,
+                            tamanoPagina = 100,
+                            excluirAdultos = true
+                        )
+                    }.getOrNull() ?: break
+                    if (pagina.items.isEmpty()) break
+                    pagina.items.forEach { if (idsAnime.add(it.token)) catalogoAnime.add(it) }
+                    totalAnime = pagina.total
+                    if (catalogoAnime.size >= totalAnime) break
+                }
+
+                val candidatos = todosLosMangas.filter { !it.esMayorDeEdad }
                 for (manga in candidatos) {
                     if (coincidencias.size >= 8) break
                     val animeExacto = catalogoAnime
