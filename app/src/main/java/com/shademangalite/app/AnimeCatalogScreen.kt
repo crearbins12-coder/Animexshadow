@@ -6,6 +6,8 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
+import android.widget.ArrayAdapter
+import android.widget.AutoCompleteTextView
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -37,14 +39,13 @@ class AnimeCatalogScreen(
     private val estado = TextView(context)
     private val campoBusqueda = EditText(context)
     private val botonBuscar = TextView(context)
-    private val campoGenero = EditText(context)
-    private val campoTipo = EditText(context)
-    private val campoEstado = EditText(context)
+    private val campoGenero = AutoCompleteTextView(context)
+    private val campoTipo = AutoCompleteTextView(context)
+    private val campoEstado = AutoCompleteTextView(context)
     private val botonMas = TextView(context)
     private val resumen = TextView(context)
 
     private var ultimaBusqueda = ""
-    private var busquedaPendiente = false
 
     init {
         orientation = VERTICAL
@@ -106,21 +107,21 @@ class AnimeCatalogScreen(
             orientation = HORIZONTAL
             setPadding(dp(16), 0, dp(16), dp(8))
         }
-        listOf(campoGenero to "Género", campoTipo to "Tipo", campoEstado to "Estado").forEach { (campo, pista) ->
-            campo.apply {
-                hint = pista
-                textSize = 11f
-                setSingleLine(true)
-                setTextColor(colorTexto)
-                setHintTextColor(colorSecundario)
-                setPadding(dp(8), dp(6), dp(8), dp(6))
-                background = GradientDrawable().apply {
-                    setColor(Color.rgb(27, 25, 41))
-                    cornerRadius = dp(10).toFloat()
-                    setStroke(dp(1), Color.rgb(91, 67, 126))
-                }
-            }
-            filaFiltros.addView(campo, LayoutParams(0, dp(40), 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
+        configurarSelector(campoGenero, "Género", listOf(
+            "Todos", "Acción", "Aventura", "Comedia", "Drama", "Fantasía",
+            "Romance", "Ciencia ficción", "Suspenso", "Terror", "Deportes",
+            "Misterio", "Sobrenatural", "Recuentos de la vida"
+        ))
+        configurarSelector(campoTipo, "Tipo", listOf(
+            "Todos", "TV", "Película", "OVA", "ONA", "Especial"
+        ))
+        configurarSelector(campoEstado, "Estado", listOf(
+            "Todos", "En emisión", "Finalizado", "Próximamente"
+        ))
+        listOf(campoGenero, campoTipo, campoEstado).forEach { campo ->
+            filaFiltros.addView(campo, LayoutParams(0, dp(42), 1f).apply {
+                setMargins(dp(2), 0, dp(2), 0)
+            })
         }
         addView(filaFiltros, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
 
@@ -235,10 +236,40 @@ class AnimeCatalogScreen(
         estado.text = mensaje
     }
 
+    private fun configurarSelector(
+        campo: AutoCompleteTextView,
+        pista: String,
+        opciones: List<String>
+    ) {
+        campo.apply {
+            hint = pista
+            threshold = 0
+            setSingleLine(true)
+            textSize = 11f
+            setTextColor(colorTexto)
+            setHintTextColor(colorSecundario)
+            setPadding(dp(8), dp(6), dp(8), dp(6))
+            setAdapter(ArrayAdapter(context, android.R.layout.simple_dropdown_item_1line, opciones))
+            setOnClickListener { showDropDown() }
+            setOnFocusChangeListener { _, tieneFoco -> if (tieneFoco) showDropDown() }
+            setOnItemClickListener { _, _, _, _ -> ejecutarFiltros() }
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(27, 25, 41))
+                cornerRadius = dp(10).toFloat()
+                setStroke(dp(1), Color.rgb(91, 67, 126))
+            }
+        }
+    }
+
     private fun ejecutarFiltros() {
         val busqueda = campoBusqueda.text.toString().trim()
         ultimaBusqueda = busqueda
-        onFiltrar(busqueda, campoGenero.text.toString().trim(), campoTipo.text.toString().trim(), campoEstado.text.toString().trim())
+        onFiltrar(
+            busqueda,
+            campoGenero.text.toString().trim().takeUnless { it.isBlank() || it == "Todos" }.orEmpty(),
+            campoTipo.text.toString().trim().takeUnless { it.isBlank() || it == "Todos" }.orEmpty(),
+            campoEstado.text.toString().trim().takeUnless { it.isBlank() || it == "Todos" }.orEmpty()
+        )
     }
 
     fun mostrarCatalogo(animes: List<Anime>, total: Int = animes.size, hayMas: Boolean = false) {
@@ -360,6 +391,7 @@ class AnimeCatalogScreen(
                 memoryCachePolicy(CachePolicy.ENABLED)
                 diskCachePolicy(CachePolicy.ENABLED)
                 precision(Precision.INEXACT)
+                size(dp(190), dp(280))
                 scale(Scale.FILL)
                 placeholder(fondoRedondeado(colorTarjeta, 16))
                 error(fondoRedondeado(Color.DKGRAY, 16))
