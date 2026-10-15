@@ -526,7 +526,7 @@ class MainActivity : Activity() {
                         return@runOnUiThread
                     }
                     val opciones = detalle.embeds.map { it.servidor + if (it.idioma.isNotBlank()) " · " + it.idioma else "" }.toTypedArray()
-                    AlertDialog.Builder(this).setTitle("Episodio " + episodio.numero + ": elegir servidor").setItems(opciones) { _, indice -> resolverYReproducirAnime(detalle.embeds[indice]) }.setNegativeButton("Cancelar", null).show()
+                    AlertDialog.Builder(this).setTitle("Episodio " + episodio.numero + ": elegir servidor").setItems(opciones) { _, indice -> resolverYReproducirAnime(detalle.embeds, indice) }.setNegativeButton("Cancelar", null).show()
                 }
             } catch (e: Exception) {
                 runOnUiThread {
@@ -538,39 +538,92 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun resolverYReproducirAnime(embed: AnimeEmbed) {
+    private fun resolverYReproducirAnime(
+        embeds: List<AnimeEmbed>,
+        indiceElegido: Int
+    ) {
+        if (embeds.isEmpty() || indiceElegido !in embeds.indices) {
+            AlertDialog.Builder(this)
+                .setTitle("Sin servidores")
+                .setMessage("Este episodio no tiene servidores para probar.")
+                .setPositiveButton("Aceptar", null)
+                .show()
+            return
+        }
+
+        // Probamos primero el servidor elegido y después los demás del episodio.
+        // Algunos proveedores (por ejemplo YourUpload) solo devuelven el tipo
+        // de reproductor, sin una URL directa que Media3 pueda reproducir.
+        val orden = listOf(indiceElegido) + embeds.indices.filter { it != indiceElegido }
         val dialogoCarga = AlertDialog.Builder(this)
-            .setMessage("Preparando reproducción…")
+            .setMessage("Probando el servidor elegido y buscando una alternativa…")
             .setCancelable(false)
             .create()
         dialogoCarga.show()
 
         ejecutor.execute {
-            try {
-                val video = animeApi.resolver(embed.servidor, embed.embedUrl)
-                runOnUiThread {
-                    dialogoCarga.dismiss()
-                    if (isFinishing || isDestroyed) return@runOnUiThread
+            var videoEncontrado: AnimeVideoResuelto? = null
+            var embedEncontrado: AnimeEmbed? = null
+            val errores = mutableListOf<String>()
 
-                    startActivity(Intent(this, AnimePlayerActivity::class.java).apply {
-                        putExtra(AnimePlayerActivity.EXTRA_URL, video.url)
-                        putExtra(AnimePlayerActivity.EXTRA_TIPO, video.tipo)
-                        putExtra(AnimePlayerActivity.EXTRA_TITULO, animeActual?.titulo ?: "Anime")
-                        putExtra(AnimePlayerActivity.EXTRA_SERVIDOR, embed.servidor)
-                    })
+            for (indice in orden) {
+                val candidato = embeds[indice]
+                try {
+                    val video = animeApi.resolver(candidato.servidor, candidato.embedUrl)
+                    videoEncontrado = video
+                    embedEncontrado = candidato
+                    break
+                } catch (e: Exception) {
+                    val motivo = e.message?.takeIf { it.isNotBlank() }
+                        ?: "No se pudo resolver el enlace"
+                    errores.add(candidato.servidor + ": " + motivo)
                 }
-            } catch (e: Exception) {
-                runOnUiThread {
-                    dialogoCarga.dismiss()
-                    if (isFinishing || isDestroyed) return@runOnUiThread
+            }
+
+            runOnUiThread {
+                dialogoCarga.dismiss()
+                if (isFinishing || isDestroyed) return@runOnUiThread
+
+                val video = videoEncontrado
+                val servidor = embedEncontrado
+                if (video != null && servidor != null) {
+                    val aviso = if (servidor != embeds[indiceElegido]) {
+                        AlertDialog.Builder(this)
+                            .setMessage("El servidor elegido no entregó un enlace directo. Se usará ${servidor.servidor}.")
+                            .setPositiveButton("Continuar") { _, _ ->
+                                abrirReproductorAnime(video, servidor)
+                            }
+                            .setNegativeButton("Cancelar", null)
+                            .create()
+                        aviso.show()
+                    } else {
+                        abrirReproductorAnime(video, servidor)
+                    }
+                } else {
+                    val resumen = errores.take(4).joinToString("\n\n")
                     AlertDialog.Builder(this)
-                        .setTitle("No se pudo iniciar el video")
-                        .setMessage(e.message ?: "Error desconocido")
+                        .setTitle("No se pudo reproducir este episodio")
+                        .setMessage(
+                            "Ningún servidor devolvió una dirección de video compatible." +
+                                if (resumen.isNotBlank()) "\n\n" + resumen else ""
+                        )
                         .setPositiveButton("Aceptar", null)
                         .show()
                 }
             }
         }
+    }
+
+    private fun abrirReproductorAnime(
+        video: AnimeVideoResuelto,
+        embed: AnimeEmbed
+    ) {
+        startActivity(Intent(this, AnimePlayerActivity::class.java).apply {
+            putExtra(AnimePlayerActivity.EXTRA_URL, video.url)
+            putExtra(AnimePlayerActivity.EXTRA_TIPO, video.tipo)
+            putExtra(AnimePlayerActivity.EXTRA_TITULO, animeActual?.titulo ?: "Anime")
+            putExtra(AnimePlayerActivity.EXTRA_SERVIDOR, embed.servidor)
+        })
     }
 
     // =====================================================
