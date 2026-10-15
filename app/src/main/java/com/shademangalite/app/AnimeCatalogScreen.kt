@@ -24,7 +24,8 @@ class AnimeCatalogScreen(
     private val colorAcento: Int = Color.rgb(190, 120, 255),
     private val colorTexto: Int = Color.WHITE,
     private val colorSecundario: Int = Color.LTGRAY,
-    private val onBuscar: (String) -> Unit,
+    private val onFiltrar: (String, String, String, String) -> Unit,
+    private val onCargarMas: () -> Unit,
     private val onSeleccionarAnime: (Anime) -> Unit
 ) : LinearLayout(context) {
 
@@ -36,6 +37,10 @@ class AnimeCatalogScreen(
     private val estado = TextView(context)
     private val campoBusqueda = EditText(context)
     private val botonBuscar = TextView(context)
+    private val campoGenero = EditText(context)
+    private val campoTipo = EditText(context)
+    private val campoEstado = EditText(context)
+    private val botonMas = TextView(context)
     private val resumen = TextView(context)
 
     private var ultimaBusqueda = ""
@@ -70,7 +75,7 @@ class AnimeCatalogScreen(
             setPadding(dp(16), 0, dp(16), dp(8))
         }
         campoBusqueda.setOnEditorActionListener { vista, _, _ ->
-            ejecutarBusqueda(vista.text.toString())
+            ejecutarFiltros()
             true
         }
         botonBuscar.apply {
@@ -89,13 +94,35 @@ class AnimeCatalogScreen(
             isClickable = true
             isFocusable = true
             elevation = dp(3).toFloat()
-            setOnClickListener { ejecutarBusqueda(campoBusqueda.text.toString()) }
+            setOnClickListener { ejecutarFiltros() }
         }
         filaBusqueda.addView(campoBusqueda, LayoutParams(0, dp(46), 1f))
         filaBusqueda.addView(botonBuscar, LayoutParams(LayoutParams.WRAP_CONTENT, dp(42)).apply {
             leftMargin = dp(8)
         })
         addView(filaBusqueda, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+
+        val filaFiltros = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            setPadding(dp(16), 0, dp(16), dp(8))
+        }
+        listOf(campoGenero to "Género", campoTipo to "Tipo", campoEstado to "Estado").forEach { (campo, pista) ->
+            campo.apply {
+                hint = pista
+                textSize = 11f
+                setSingleLine(true)
+                setTextColor(colorTexto)
+                setHintTextColor(colorSecundario)
+                setPadding(dp(8), dp(6), dp(8), dp(6))
+                background = GradientDrawable().apply {
+                    setColor(Color.rgb(27, 25, 41))
+                    cornerRadius = dp(10).toFloat()
+                    setStroke(dp(1), Color.rgb(91, 67, 126))
+                }
+            }
+            filaFiltros.addView(campo, LayoutParams(0, dp(40), 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
+        }
+        addView(filaFiltros, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
 
         resumen.apply {
             textSize = 12f
@@ -208,12 +235,10 @@ class AnimeCatalogScreen(
         estado.text = mensaje
     }
 
-    private fun ejecutarBusqueda(texto: String) {
-        val busqueda = texto.trim()
-        if (busqueda != ultimaBusqueda) {
-            ultimaBusqueda = busqueda
-            onBuscar(busqueda)
-        }
+    private fun ejecutarFiltros() {
+        val busqueda = campoBusqueda.text.toString().trim()
+        ultimaBusqueda = busqueda
+        onFiltrar(busqueda, campoGenero.text.toString().trim(), campoTipo.text.toString().trim(), campoEstado.text.toString().trim())
     }
 
     fun mostrarCatalogo(animes: List<Anime>, total: Int = animes.size, hayMas: Boolean = false) {
@@ -294,6 +319,27 @@ class AnimeCatalogScreen(
             }
             contenido.addView(botonMas, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { setMargins(dp(8), dp(8), dp(8), dp(12)) })
         }
+    }
+
+    fun mostrarErrorCargaMas() {
+        botonMas.isEnabled = true
+        botonMas.text = "REINTENTAR CARGA"
+        botonMas.setOnClickListener { isEnabled = false; onCargarMas() }
+        if (hayMas) {
+            botonMas.apply {
+                text = "CARGAR MÁS ANIMES  ↓"
+                textSize = 12f
+                setTypeface(null, Typeface.BOLD)
+                gravity = Gravity.CENTER
+                setTextColor(Color.WHITE)
+                setPadding(dp(16), dp(13), dp(16), dp(13))
+                background = GradientDrawable().apply { setColor(colorAcento); cornerRadius = dp(13).toFloat() }
+                isEnabled = true
+                setOnClickListener { isEnabled = false; text = "CARGANDO..."; onCargarMas() }
+            }
+            contenido.addView(botonMas, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { setMargins(dp(8), dp(8), dp(8), dp(12)) })
+        }
+
     }
 
     fun mostrarErrorCargaMas() {
