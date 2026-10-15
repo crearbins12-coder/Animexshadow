@@ -25,8 +25,6 @@ import coil.size.Precision
 import coil.size.Scale
 import org.json.JSONArray
 import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 import java.util.concurrent.Executors
 import kotlin.math.max
 import kotlin.math.min
@@ -35,6 +33,7 @@ import kotlin.math.abs
 class MainActivity : Activity() {
 
     private val apiBase = "https://shademanga.com"
+    private val mangaApi = MangaApi(apiBase = apiBase)
     private val tamanoPaginaCatalogo = 100
 
     private val fondo = ShadeTheme.fondo
@@ -450,40 +449,7 @@ class MainActivity : Activity() {
     private fun analizarSeries(
         array: JSONArray
     ): MutableList<Serie> {
-        val resultado = mutableListOf<Serie>()
-
-        for (i in 0 until array.length()) {
-            val objeto = array.optJSONObject(i) ?: continue
-
-            if (objeto.optBoolean("esMayorDeEdad", false)) {
-                continue
-            }
-
-            val id = objeto.optString("id", "")
-            if (id.isBlank() || id == "null") continue
-
-            val autor = objeto.optString("autor", "")
-            val portada = objeto.optString("portadaUrl", "")
-
-            resultado.add(
-                Serie(
-                    id = id,
-                    publicId = objeto.optString("publicId", ""),
-                    titulo = objeto.optString(
-                        "titulo",
-                        "Manga sin título"
-                    ),
-                    autor = if (
-                        autor.isBlank() || autor == "null"
-                    ) "Autor desconocido" else autor,
-                    portadaUrl = if (portada == "null") "" else portada,
-                    capitulos = objeto.optInt("totalCapitulos", 0),
-                    genero = obtenerGeneros(objeto.opt("generos"))
-                )
-            )
-        }
-
-        return resultado.distinctBy { it.id }.toMutableList()
+        return mangaApi.analizarSeries(array).toMutableList()
     }
 
     // =====================================================
@@ -1135,30 +1101,7 @@ class MainActivity : Activity() {
                 )
 
                 val array = JSONArray(respuesta)
-                val resultado = mutableListOf<Capitulo>()
-
-                for (i in 0 until array.length()) {
-                    val objeto = array.optJSONObject(i) ?: continue
-                    if (!objeto.optBoolean("visible", true)) continue
-
-                    val id = objeto.optString("id", "")
-                    if (id.isBlank() || id == "null") continue
-
-                    resultado.add(
-                        Capitulo(
-                            id = id,
-                            publicId = objeto.optString("publicId", ""),
-                            numero = objeto.optString(
-                                "numeroCapitulo",
-                                "${i + 1}"
-                            ),
-                            titulo = objeto.optString("titulo", "").let {
-                                if (it == "null") "" else it
-                            },
-                            totalPaginas = objeto.optInt("totalPaginas", 0)
-                        )
-                    )
-                }
+                val resultado = mangaApi.analizarCapitulos(array)
 
                 runOnUiThread {
                     if (
@@ -1251,26 +1194,10 @@ class MainActivity : Activity() {
                 )
 
                 val objeto = JSONObject(respuesta)
-                val array = objeto.optJSONArray("paginas")
-                    ?: throw Exception("La API no devolvió páginas.")
+                val paginas = mangaApi.analizarPaginas(objeto)
 
-                val paginas = mutableListOf<String>()
-
-                for (i in 0 until array.length()) {
-                    val direccion = array.optString(i, "").trim()
-
-                    try {
-                        val url = URL(direccion)
-
-                        if (
-                            url.protocol == "https" &&
-                            url.host == "cdn.shademanga.com"
-                        ) {
-                            paginas.add(direccion)
-                        }
-                    } catch (_: Exception) {
-                        // Ignorar URL inválidas.
-                    }
+                if (paginas.isEmpty()) {
+                    throw Exception("La API no devolvió páginas válidas.")
                 }
 
                 runOnUiThread {
@@ -1815,46 +1742,7 @@ class MainActivity : Activity() {
     // =====================================================
 
     private fun consultarApi(ruta: String): String {
-        val url = URL(
-            if (ruta.startsWith("http")) ruta else "$apiBase$ruta"
-        )
-
-        val conexion = url.openConnection() as HttpURLConnection
-
-        try {
-            conexion.requestMethod = "GET"
-            conexion.connectTimeout = 15000
-            conexion.readTimeout = 20000
-
-            conexion.setRequestProperty("Accept", "application/json")
-            conexion.setRequestProperty(
-                "User-Agent",
-                "Mozilla/5.0 ShadeMangaLite/1.0"
-            )
-
-            val codigo = conexion.responseCode
-
-            val flujo = if (codigo in 200..299) {
-                conexion.inputStream
-            } else {
-                conexion.errorStream
-                    ?: throw Exception("Error HTTP $codigo")
-            }
-
-            val respuesta = flujo.bufferedReader().use {
-                it.readText()
-            }
-
-            if (codigo !in 200..299) {
-                throw Exception(
-                    "HTTP $codigo: ${respuesta.take(250)}"
-                )
-            }
-
-            return respuesta
-        } finally {
-            conexion.disconnect()
-        }
+        return mangaApi.consultarTexto(ruta)
     }
 
     private fun obtenerGeneros(valor: Any?): String {
