@@ -35,6 +35,8 @@ class AnimeCatalogScreen(
     private val contenido = LinearLayout(context)
     private val estado = TextView(context)
     private val campoBusqueda = EditText(context)
+    private val botonBuscar = TextView(context)
+    private val resumen = TextView(context)
 
     private var ultimaBusqueda = ""
     private var busquedaPendiente = false
@@ -55,26 +57,41 @@ class AnimeCatalogScreen(
             background = fondoRedondeado(colorTarjeta, 12)
         }
 
-        addView(
-            campoBusqueda,
-            LayoutParams(
-                LayoutParams.MATCH_PARENT,
-                dp(46)
-            ).apply {
-                setMargins(dp(16), dp(8), dp(16), dp(12))
-            }
-        )
+        // El buscador y el botón se agregan juntos para que la búsqueda también funcione sin la tecla Enter.
 
-        campoBusqueda.setOnEditorActionListener { vista, _, _ ->
-            val busqueda = vista.text.toString().trim()
-
-            if (busqueda != ultimaBusqueda) {
-                ultimaBusqueda = busqueda
-                onBuscar(busqueda)
-            }
-
-            false
+        val filaBusqueda = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(16), 0, dp(16), dp(8))
         }
+        campoBusqueda.setOnEditorActionListener { vista, _, _ ->
+            ejecutarBusqueda(vista.text.toString())
+            true
+        }
+        botonBuscar.apply {
+            text = "Buscar"
+            textSize = 14f
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            background = fondoRedondeado(colorAcento, 10)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { ejecutarBusqueda(campoBusqueda.text.toString()) }
+        }
+        filaBusqueda.addView(campoBusqueda, LayoutParams(0, dp(46), 1f))
+        filaBusqueda.addView(botonBuscar, LayoutParams(LayoutParams.WRAP_CONTENT, dp(42)).apply {
+            leftMargin = dp(8)
+        })
+        addView(filaBusqueda, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+
+        resumen.apply {
+            textSize = 12f
+            setTextColor(colorSecundario)
+            setPadding(dp(16), 0, dp(16), dp(4))
+            visibility = GONE
+        }
+        addView(resumen, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
 
         val scroll = ScrollView(context).apply {
             isFillViewport = true
@@ -158,10 +175,22 @@ class AnimeCatalogScreen(
         estado.text = mensaje
     }
 
-    fun mostrarCatalogo(animes: List<Anime>) {
+    private fun ejecutarBusqueda(texto: String) {
+        val busqueda = texto.trim()
+        if (busqueda != ultimaBusqueda) {
+            ultimaBusqueda = busqueda
+            onBuscar(busqueda)
+        }
+    }
+
+    fun mostrarCatalogo(animes: List<Anime>, total: Int = animes.size) {
         contenido.removeViews(1, contenido.childCount - 1)
 
-        if (animes.isEmpty()) {
+        val animesSeguros = animes.filterNot { it.esMayorDeEdad }
+        resumen.visibility = VISIBLE
+        resumen.text = "Mostrando ${animesSeguros.size} resultados de ${total.coerceAtLeast(animesSeguros.size)} · contenido adulto excluido"
+
+        if (animesSeguros.isEmpty()) {
             estado.visibility = VISIBLE
             estado.text = "No se encontraron animes."
             return
@@ -174,7 +203,7 @@ class AnimeCatalogScreen(
 
         var fila: LinearLayout? = null
 
-        animes.forEachIndexed { indice, anime ->
+        animesSeguros.forEachIndexed { indice, anime ->
             if (indice % columnas == 0) {
                 fila = LinearLayout(context).apply {
                     orientation = HORIZONTAL
