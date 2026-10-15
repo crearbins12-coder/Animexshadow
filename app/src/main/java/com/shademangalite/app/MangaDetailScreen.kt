@@ -1,6 +1,7 @@
 package com.shademangalite.app
 
 import android.content.Context
+import android.graphics.Color
 import android.view.View
 import android.widget.LinearLayout
 
@@ -33,7 +34,7 @@ fun construir(destino: LinearLayout) {
     espacioEn(destino, 12)
 
     destino.addView(
-        crearTexto(serie.titulo, 22f, true)
+        crearTexto(serie.titulo, 24f, true)
     )
 
     espacioEn(destino, 6)
@@ -61,7 +62,7 @@ fun construir(destino: LinearLayout) {
     espacioEn(destino, 14)
 
     destino.addView(
-        crearTexto("Capítulos (${capitulos.size})", 19f, true)
+        crearTexto("Capítulos (${capitulos.size})", 20f, true)
     )
 
     espacioEn(destino, 8)
@@ -96,8 +97,10 @@ private fun agregarCapitulo(
 
     val elemento = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
-        setPadding(dp(14), dp(14), dp(14), dp(14))
-        background = crearFondo(colorTarjeta, 12)
+        setPadding(dp(16), dp(15), dp(16), dp(15))
+        background = crearFondo(colorTarjeta, 14).apply {
+            setStroke(dp(1), Color.rgb(78, 55, 115))
+        }
         isClickable = true
         isFocusable = true
 
