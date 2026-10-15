@@ -618,7 +618,7 @@ class MainActivity : Activity() {
                         return@runOnUiThread
                     }
                     val opciones = detalle.embeds.map { it.servidor + if (it.idioma.isNotBlank()) " · " + it.idioma else "" }.toTypedArray()
-                    AlertDialog.Builder(this).setTitle("Episodio " + episodio.numero + ": elegir servidor").setItems(opciones) { _, indice -> resolverYReproducirAnime(detalle.embeds, indice) }.setNegativeButton("Cancelar", null).show()
+                    AlertDialog.Builder(this).setTitle("Episodio " + episodio.numero + ": elegir servidor").setItems(opciones) { _, indice -> resolverYReproducirAnime(detalle.embeds, indice, anime.titulo + " · Episodio " + episodio.numero) }.setNegativeButton("Cancelar", null).show()
                 }
             } catch (e: Exception) {
                 runOnUiThread {
@@ -632,7 +632,8 @@ class MainActivity : Activity() {
 
     private fun resolverYReproducirAnime(
         embeds: List<AnimeEmbed>,
-        indiceElegido: Int
+        indiceElegido: Int,
+        tituloEpisodio: String
     ) {
         if (embeds.isEmpty() || indiceElegido !in embeds.indices) {
             AlertDialog.Builder(this)
@@ -683,12 +684,12 @@ class MainActivity : Activity() {
                         AlertDialog.Builder(this)
                             .setMessage("El servidor elegido no entregó un enlace directo. Se usará ${servidor.servidor}.")
                             .setPositiveButton("Continuar") { _, _ ->
-                                abrirReproductorAnime(video, servidor)
+                                abrirReproductorAnime(video, servidor, tituloEpisodio)
                             }
                             .setNegativeButton("Cancelar", null)
                             .show()
                     } else {
-                        abrirReproductorAnime(video, servidor)
+                        abrirReproductorAnime(video, servidor, tituloEpisodio)
                     }
                 } else {
                     val resumen = errores.take(4).joinToString("\n\n")
@@ -707,12 +708,13 @@ class MainActivity : Activity() {
 
     private fun abrirReproductorAnime(
         video: AnimeVideoResuelto,
-        embed: AnimeEmbed
+        embed: AnimeEmbed,
+        tituloEpisodio: String
     ) {
         startActivity(Intent(this, AnimePlayerActivity::class.java).apply {
             putExtra(AnimePlayerActivity.EXTRA_URL, video.url)
             putExtra(AnimePlayerActivity.EXTRA_TIPO, video.tipo)
-            putExtra(AnimePlayerActivity.EXTRA_TITULO, animeActual?.titulo ?: "Anime")
+            putExtra(AnimePlayerActivity.EXTRA_TITULO, tituloEpisodio)
             putExtra(AnimePlayerActivity.EXTRA_SERVIDOR, embed.servidor)
         })
     }
