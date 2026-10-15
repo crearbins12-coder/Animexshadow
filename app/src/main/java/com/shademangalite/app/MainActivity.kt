@@ -955,6 +955,84 @@ class MainActivity : Activity() {
         )
 
         contenido.addView(accesos)
+
+        // Panel editorial neon: una entrada visual al catálogo y datos reales de la biblioteca.
+        val panelDescubrimiento = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(15), dp(16), dp(15))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(
+                    Color.rgb(42, 24, 68),
+                    Color.rgb(24, 31, 54),
+                    Color.rgb(15, 29, 42)
+                )
+            ).apply {
+                cornerRadius = dp(20).toFloat()
+                setStroke(dp(1), Color.rgb(91, 65, 137))
+            }
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                catalogo.firstOrNull()?.let { destacada -> mostrarSerie(destacada) }
+            }
+        }
+
+        panelDescubrimiento.addView(TextView(this).apply {
+            text = "✦  NEON DISCOVERY"
+            textSize = 10f
+            letterSpacing = 0.15f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.rgb(105, 224, 255))
+        })
+
+        panelDescubrimiento.addView(TextView(this).apply {
+            text = "Tu próxima obsesión\nempieza acá."
+            textSize = 22f
+            setLineSpacing(0f, 0.98f)
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            setPadding(0, dp(7), 0, dp(5))
+        })
+
+        panelDescubrimiento.addView(TextView(this).apply {
+            text = "Explorá historias, guardá favoritas y armá tu propia colección."
+            textSize = 12f
+            setTextColor(Color.rgb(190, 194, 216))
+        })
+
+        val filaEstadisticas = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(13), 0, 0)
+        }
+        listOf(
+            "▣  ${catalogo.size} MANGAS",
+            "★  ${favoritos.size} FAVORITOS"
+        ).forEachIndexed { indice, etiqueta ->
+            filaEstadisticas.addView(TextView(this).apply {
+                text = etiqueta
+                textSize = 9f
+                letterSpacing = 0.03f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(if (indice == 0) Color.rgb(220, 194, 255) else Color.rgb(105, 224, 255))
+                setPadding(dp(9), dp(7), dp(9), dp(7))
+                background = GradientDrawable().apply {
+                    setColor(if (indice == 0) Color.rgb(48, 31, 68) else Color.rgb(18, 43, 54))
+                    cornerRadius = dp(9).toFloat()
+                }
+            }, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                if (indice > 0) leftMargin = dp(8)
+            })
+        }
+        panelDescubrimiento.addView(filaEstadisticas)
+        contenido.addView(panelDescubrimiento, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ))
         espacio(18)
 
         val ultimaSerieId = preferencias.getString("ultima_serie", "")
