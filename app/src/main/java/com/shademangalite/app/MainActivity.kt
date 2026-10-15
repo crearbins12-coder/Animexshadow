@@ -349,7 +349,15 @@ class MainActivity : Activity() {
             )
         }
 
-        raiz.addView(\n            encabezado,\n            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {\n                setMargins(dp(12), dp(10), dp(12), dp(8))\n            }\n        )
+        raiz.addView(
+            encabezado,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(dp(12), dp(10), dp(12), dp(8))
+            }
+        )
 
         scrollPrincipal = object : ScrollView(this) {
             override fun onScrollChanged(
