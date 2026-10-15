@@ -46,6 +46,7 @@ class AnimeCatalogScreen(
     private val resumen = TextView(context)
 
     private var ultimaBusqueda = ""
+    private var cantidadRenderizada = 0
 
     init {
         orientation = VERTICAL
@@ -223,6 +224,7 @@ class AnimeCatalogScreen(
     }
 
     fun mostrarCargando() {
+        cantidadRenderizada = 0
         contenido.removeViews(1, contenido.childCount - 1)
 
         estado.visibility = VISIBLE
@@ -230,6 +232,7 @@ class AnimeCatalogScreen(
     }
 
     fun mostrarError(mensaje: String) {
+        cantidadRenderizada = 0
         contenido.removeViews(1, contenido.childCount - 1)
 
         estado.visibility = VISIBLE
@@ -272,25 +275,29 @@ class AnimeCatalogScreen(
         )
     }
 
-    fun mostrarCatalogo(animes: List<Anime>, total: Int = animes.size, hayMas: Boolean = false) {
-        contenido.removeViews(1, contenido.childCount - 1)
+    fun mostrarCatalogo(animes: List<Anime>, total: Int = animes.size, hayMas: Boolean = false, agregar: Boolean = false) {
+        if (!agregar) {
+            cantidadRenderizada = 0
+            contenido.removeViews(1, contenido.childCount - 1)
+        } else if (contenido.childCount > 1 && contenido.getChildAt(contenido.childCount - 1) === botonMas) {
+            contenido.removeViewAt(contenido.childCount - 1)
+        }
 
         val animesSeguros = animes.filterNot { it.esMayorDeEdad }
         resumen.visibility = VISIBLE
         resumen.text = "Mostrando ${animesSeguros.size} resultados de ${total.coerceAtLeast(animesSeguros.size)} · contenido adulto excluido"
 
-        if (animesSeguros.isEmpty()) {
+        if (animesSeguros.isEmpty() && !agregar) {
             estado.visibility = VISIBLE
             estado.text = "No se encontraron animes."
             return
         }
 
         estado.visibility = GONE
+        val inicio = if (agregar) cantidadRenderizada else 0
+        if (!agregar && animesSeguros.isNotEmpty()) agregarDestacado(animesSeguros.first())
 
-        // Hero visual: la primera serie destaca antes de la cuadrícula.
-        agregarDestacado(animesSeguros.first())
-
-        contenido.addView(TextView(context).apply {
+        if (!agregar) contenido.addView(TextView(context).apply {
             text = "✦  EXPLORÁ EL CATÁLOGO"
             textSize = 11f
             letterSpacing = 0.12f
@@ -304,7 +311,7 @@ class AnimeCatalogScreen(
 
         var fila: LinearLayout? = null
 
-        animesSeguros.drop(1).forEachIndexed { indice, anime ->
+        animesSeguros.drop(maxOf(1, inicio)).forEachIndexed { indice, anime ->
             if (indice % columnas == 0) {
                 fila = LinearLayout(context).apply {
                     orientation = HORIZONTAL
@@ -336,6 +343,7 @@ class AnimeCatalogScreen(
             )
         }
 
+        cantidadRenderizada = animesSeguros.size
         if (hayMas) {
             botonMas.apply {
                 text = "CARGAR MÁS ANIMES  ↓"
