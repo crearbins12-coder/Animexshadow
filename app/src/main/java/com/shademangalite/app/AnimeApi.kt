@@ -407,6 +407,52 @@ class AnimeApi(
             .distinct()
     }
 
+    private fun buscarUrlReproduccion(objeto: JSONObject): String {
+        val clavesUrl = listOf(
+            "url",
+            "proxyUrl",
+            "proxyURL",
+            "playUrl",
+            "playbackUrl",
+            "videoUrl",
+            "streamUrl",
+            "urlReproduccion",
+            "directUrl",
+            "src",
+            "m3u8",
+            "mp4"
+        )
+
+        for (clave in clavesUrl) {
+            val valor = obtenerTexto(objeto, clave)
+            if (valor.isNotBlank()) return valor
+        }
+
+        val clavesAnidadas = listOf(
+            "data",
+            "result",
+            "video",
+            "source",
+            "playback",
+            "proxy"
+        )
+
+        for (clave in clavesAnidadas) {
+            val anidado = objeto.optJSONObject(clave)
+            if (anidado != null) {
+                val encontrado = buscarUrlReproduccion(anidado)
+                if (encontrado.isNotBlank()) return encontrado
+            }
+
+            val texto = obtenerTexto(objeto, clave)
+            if (texto.startsWith("https://") || texto.startsWith("/")) {
+                return texto
+            }
+        }
+
+        return ""
+    }
+
     fun resolver(
         servidor: String,
         embedUrl: String
@@ -438,10 +484,15 @@ class AnimeApi(
             .substringBefore(";")
             .trim()
 
-        val urlVideo = obtenerTexto(respuesta, "url")
+        // La API puede publicar la URL de reproducción con nombres distintos
+        // según el servidor o anidarla dentro de data/result/video.
+        val urlVideo = buscarUrlReproduccion(respuesta)
 
         require(urlVideo.isNotBlank()) {
-            "La API no devolvió una dirección de reproducción."
+            val claves = respuesta.keys().asSequence().toList().joinToString(", ")
+            "La API no devolvió una dirección de reproducción para «$servidor». " +
+                "Campos recibidos: ${claves.ifBlank { "(ninguno)" }}. " +
+                "Probá otro servidor para este episodio."
         }
 
         // Algunos servidores usan nombres MIME distintos para el mismo formato.
