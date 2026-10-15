@@ -614,7 +614,12 @@ class MainActivity : Activity() {
                     if (isFinishing || isDestroyed) { dialogoCarga.dismiss(); return@runOnUiThread }
                     dialogoCarga.dismiss()
                     if (detalle.embeds.isEmpty()) {
-                        AlertDialog.Builder(this).setMessage("Este episodio no tiene servidores disponibles.").setPositiveButton("Aceptar", null).show()
+                        AlertDialog.Builder(this)
+                            .setTitle("Sin servidores disponibles")
+                            .setMessage("Este episodio no tiene servidores en la fuente actual. Podés buscar «${anime.titulo}» en OtakusTV como alternativa.")
+                            .setPositiveButton("Buscar en OtakusTV") { _, _ -> abrirOtakusTv(anime.titulo) }
+                            .setNegativeButton("Ahora no", null)
+                            .show()
                         return@runOnUiThread
                     }
                     val opciones = detalle.embeds.map { it.servidor + if (it.idioma.isNotBlank()) " · " + it.idioma else "" }.toTypedArray()
@@ -697,12 +702,30 @@ class MainActivity : Activity() {
                         .setTitle("No se pudo reproducir este episodio")
                         .setMessage(
                             "Ningún servidor devolvió una dirección de video compatible." +
-                                if (resumen.isNotBlank()) "\n\n" + resumen else ""
+                                (if (resumen.isNotBlank()) "\n\n" + resumen else "") +
+                                "\n\nPodés buscar este anime en OtakusTV como alternativa."
                         )
-                        .setPositiveButton("Aceptar", null)
+                        .setPositiveButton("Buscar en OtakusTV") {
+                            _, _ -> abrirOtakusTv(tituloEpisodio.substringBefore(" · Episodio"))
+                        }
+                        .setNegativeButton("Cerrar", null)
                         .show()
                 }
             }
+        }
+    }
+
+    private fun abrirOtakusTv(tituloAnime: String) {
+        // Fallback web oficial: no extraemos ni eludimos los reproductores de terceros.
+        // Se abre el catálogo para que el usuario pueda localizar el título manualmente.
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.otakustv.net/animes"))
+        try {
+            startActivity(intent)
+        } catch (_: Exception) {
+            AlertDialog.Builder(this)
+                .setMessage("No se pudo abrir el navegador. Entrá a otakustv.net y buscá: $tituloAnime")
+                .setPositiveButton("Aceptar", null)
+                .show()
         }
     }
 
