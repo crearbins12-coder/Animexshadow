@@ -94,6 +94,14 @@ class MainActivity : Activity() {
     private var mostrandoDetalleAnime = false
     private var animeActual: Anime? = null
     private var generacionAnime = 0
+    private var paginaAnime = 1
+    private var totalAnime = 0
+    private var busquedaAnime = ""
+    private var generoAnime = ""
+    private var tipoAnime = ""
+    private var estadoAnime = ""
+    private var listaAnimeActual = mutableListOf<Anime>()
+    private var cargandoMasAnime = false
 
     private var lectorActivo = false
     private var lectorPantallaCompleta = false
@@ -460,7 +468,16 @@ class MainActivity : Activity() {
             colorAcento = acento,
             colorTexto = textoColor,
             colorSecundario = textoSecundario,
-            onBuscar = { consulta -> referenciaPantalla[0]?.let { cargarCatalogoAnime(it, consulta) } },
+            onFiltrar = { consulta, genero, tipo, estado ->
+                referenciaPantalla[0]?.let { pantalla ->
+                    busquedaAnime = consulta
+                    generoAnime = genero
+                    tipoAnime = tipo
+                    estadoAnime = estado
+                    cargarCatalogoAnime(pantalla)
+                }
+            },
+            onCargarMas = { referenciaPantalla[0]?.let { cargarMasAnime(it) } },
             onSeleccionarAnime = { anime -> mostrarDetalleAnime(anime) }
         )
         referenciaPantalla[0] = pantalla
@@ -485,25 +502,58 @@ class MainActivity : Activity() {
             ))
         }
         setContentView(raizAnime)
-        cargarCatalogoAnime(pantalla, "")
+        cargarCatalogoAnime(pantalla)
     }
 
-    private fun cargarCatalogoAnime(pantallaReferencia: AnimeCatalogScreen, busqueda: String) {
+    private fun cargarCatalogoAnime(pantallaReferencia: AnimeCatalogScreen) {
         if (!mostrandoAnime || mostrandoDetalleAnime) return
         val generacion = ++generacionAnime
+        paginaAnime = 1
+        listaAnimeActual.clear()
+        cargandoMasAnime = false
         pantallaReferencia.mostrarCargando()
-
         ejecutor.execute {
             try {
-                val resultado = animeApi.obtenerCatalogo(busqueda = busqueda, pagina = 1, tamanoPagina = 24, excluirAdultos = true)
+                val resultado = animeApi.obtenerCatalogo(busqueda = busquedaAnime, genero = generoAnime, tipo = tipoAnime, estado = estadoAnime, pagina = 1, tamanoPagina = 24, excluirAdultos = true)
                 runOnUiThread {
                     if (isFinishing || isDestroyed || generacion != generacionAnime || !mostrandoAnime || mostrandoDetalleAnime) return@runOnUiThread
-                    pantallaReferencia.mostrarCatalogo(resultado.items, resultado.total)
+                    paginaAnime = resultado.pagina
+                    totalAnime = resultado.total
+                    listaAnimeActual = resultado.items.toMutableList()
+                    pantallaReferencia.mostrarCatalogo(listaAnimeActual.toList(), totalAnime, hayMas = listaAnimeActual.size < totalAnime)
                 }
             } catch (e: Exception) {
                 runOnUiThread {
                     if (isFinishing || isDestroyed || generacion != generacionAnime || !mostrandoAnime || mostrandoDetalleAnime) return@runOnUiThread
                     pantallaReferencia.mostrarError("No se pudo cargar el anime.\n" + (e.message ?: "Error desconocido"))
+                }
+            }
+        }
+    }
+
+    private fun cargarMasAnime(pantallaReferencia: AnimeCatalogScreen) {
+        if (!mostrandoAnime || mostrandoDetalleAnime || cargandoMasAnime || listaAnimeActual.size >= totalAnime) return
+        cargandoMasAnime = true
+        val generacion = generacionAnime
+        val siguientePagina = paginaAnime + 1
+        ejecutor.execute {
+            try {
+                val resultado = animeApi.obtenerCatalogo(busqueda = busquedaAnime, genero = generoAnime, tipo = tipoAnime, estado = estadoAnime, pagina = siguientePagina, tamanoPagina = 24, excluirAdultos = true)
+                runOnUiThread {
+                    if (isFinishing || isDestroyed || generacion != generacionAnime || !mostrandoAnime || mostrandoDetalleAnime) return@runOnUiThread
+                    cargandoMasAnime = false
+                    paginaAnime = resultado.pagina
+                    val tokensExistentes = listaAnimeActual.map { it.token }.toHashSet()
+                    listaAnimeActual.addAll(resultado.items.filter { it.token !in tokensExistentes })
+                    totalAnime = resultado.total
+                    pantallaReferencia.mostrarCatalogo(listaAnimeActual.toList(), totalAnime, hayMas = listaAnimeActual.size < totalAnime)
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    if (generacion == generacionAnime && mostrandoAnime && !mostrandoDetalleAnime) {
+                        cargandoMasAnime = false
+                        pantallaReferencia.mostrarErrorCargaMas()
+                    }
                 }
             }
         }
