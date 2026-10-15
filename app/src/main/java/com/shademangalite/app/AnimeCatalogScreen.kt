@@ -248,7 +248,7 @@ class AnimeCatalogScreen(
 
         var fila: LinearLayout? = null
 
-        animesSeguros.forEachIndexed { indice, anime ->
+        animesSeguros.drop(1).forEachIndexed { indice, anime ->
             if (indice % columnas == 0) {
                 fila = LinearLayout(context).apply {
                     orientation = HORIZONTAL
