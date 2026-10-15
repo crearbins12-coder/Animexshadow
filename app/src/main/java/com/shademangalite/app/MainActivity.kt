@@ -1288,22 +1288,44 @@ class MainActivity : Activity() {
         ejecutor.execute {
             val coincidencias = mutableListOf<Triple<Serie, Anime, Int>>()
             try {
-                val candidatos = catalogo.filter { !it.esMayorDeEdad }.take(30)
-                for (manga in candidatos) {
-                    if (coincidencias.size >= 4) break
-                    val resultados = runCatching {
-                        animeApi.obtenerCatalogo(
-                            busqueda = manga.titulo, pagina = 1, tamanoPagina = 8, excluirAdultos = true
-                        ).items
-                    }.getOrDefault(emptyList())
+                // En vez de buscar cada manga por separado (el buscador de la API
+                // puede devolver cero resultados), cargamos el catálogo de anime
+                // y comparamos títulos localmente.
+                val catalogoAnime = mutableListOf<Anime>()
+                var totalAnime = 0
+                var paginaAnime = 1
+                do {
+                    val pagina = animeApi.obtenerCatalogo(
+                        pagina = paginaAnime,
+                        tamanoPagina = 100,
+                        excluirAdultos = true
+                    )
+                    catalogoAnime.addAll(pagina.items)
+                    totalAnime = pagina.total
+                    paginaAnime++
+                } while (paginaAnime <= 3 && catalogoAnime.size < totalAnime && pagina.items.isNotEmpty())
 
-                    val animeExacto = resultados.firstOrNull { anime ->
-                        titulosCoinciden(manga.titulo, anime.titulo)
-                    }
+                val candidatos = catalogo.filter { !it.esMayorDeEdad }.take(100)
+                for (manga in candidatos) {
+                    if (coincidencias.size >= 8) break
+                    val animeExacto = catalogoAnime
+                        .filter { titulosCoinciden(manga.titulo, it.titulo) }
+                        .maxByOrNull { anime ->
+                            val a = normalizarTituloRelacion(manga.titulo)
+                            val b = normalizarTituloRelacion(anime.titulo)
+                            when {
+                                a == b -> 3
+                                a.startsWith(b) || b.startsWith(a) -> 2
+                                else -> 1
+                            }
+                        }
+
                     if (animeExacto != null && coincidencias.none {
                             it.first.id == manga.id || it.second.token == animeExacto.token
                         }) {
-                        val cantidadEpisodios = runCatching { animeApi.obtenerDetalle(animeExacto.token, true).numEpisodios }.getOrDefault(0)
+                        val cantidadEpisodios = runCatching {
+                            animeApi.obtenerDetalle(animeExacto.token, true).numEpisodios
+                        }.getOrDefault(0)
                         coincidencias.add(Triple(manga, animeExacto, cantidadEpisodios))
                     }
                 }
