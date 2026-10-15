@@ -751,6 +751,8 @@ class MainActivity : Activity() {
                     errorCargaCatalogo = false
 
                     mangasVisiblesPorCategoria.clear()
+                    relacionesAnimeMangaListas = false
+                    relacionesAnimeMangaCargando = false
                     mostrarCatalogoFiltrado()
                 }
             } catch (e: Exception) {
@@ -1174,8 +1176,23 @@ class MainActivity : Activity() {
     private fun normalizarTituloRelacion(titulo: String): String =
         java.text.Normalizer.normalize(titulo.lowercase(), java.text.Normalizer.Form.NFD)
             .replace(Regex("\\p{Mn}+"), "")
+            .replace(Regex("\\b(the|season|part|tv|anime|manga)\\b"), " ")
             .replace(Regex("[^a-z0-9]+"), " ")
+            .replace(Regex("\\s+"), " ")
             .trim()
+
+    private fun titulosCoinciden(manga: String, anime: String): Boolean {
+        val a = normalizarTituloRelacion(manga)
+        val b = normalizarTituloRelacion(anime)
+        if (a.isBlank() || b.isBlank()) return false
+        if (a == b || a.startsWith(b) || b.startsWith(a)) return true
+        val tokensA = a.split(" ").filter { it.length > 2 }.toSet()
+        val tokensB = b.split(" ").filter { it.length > 2 }.toSet()
+        if (tokensA.isEmpty() || tokensB.isEmpty()) return false
+        val similitud = tokensA.intersect(tokensB).size.toDouble() /
+            minOf(tokensA.size, tokensB.size).toDouble()
+        return similitud >= 0.8
+    }
 
     private fun agregarSeccionAnimeYManga() {
         contenido.addView(texto("✦  ANIME + MANGA", 20f, true))
@@ -1271,7 +1288,7 @@ class MainActivity : Activity() {
         ejecutor.execute {
             val coincidencias = mutableListOf<Triple<Serie, Anime, Int>>()
             try {
-                val candidatos = catalogo.filter { !it.esMayorDeEdad }.take(10)
+                val candidatos = catalogo.filter { !it.esMayorDeEdad }.take(30)
                 for (manga in candidatos) {
                     if (coincidencias.size >= 4) break
                     val resultados = runCatching {
@@ -1280,14 +1297,8 @@ class MainActivity : Activity() {
                         ).items
                     }.getOrDefault(emptyList())
 
-                    val claveManga = normalizarTituloRelacion(manga.titulo)
                     val animeExacto = resultados.firstOrNull { anime ->
-                        val tituloAnime = normalizarTituloRelacion(anime.titulo)
-                        tituloAnime == claveManga ||
-                            (tituloAnime.isNotBlank() && claveManga.isNotBlank() &&
-                                (tituloAnime.startsWith(claveManga) || claveManga.startsWith(tituloAnime)) &&
-                                minOf(tituloAnime.length, claveManga.length).toDouble() /
-                                    maxOf(tituloAnime.length, claveManga.length).toDouble() >= 0.85)
+                        titulosCoinciden(manga.titulo, anime.titulo)
                     }
                     if (animeExacto != null && coincidencias.none {
                             it.first.id == manga.id || it.second.token == animeExacto.token
