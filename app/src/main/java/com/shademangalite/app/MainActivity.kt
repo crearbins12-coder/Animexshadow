@@ -265,35 +265,47 @@ class MainActivity : Activity() {
 
         val encabezado = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(18), dp(18), dp(14))
+            setPadding(dp(20), dp(20), dp(20), dp(18))
             background = GradientDrawable(
-                GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(Color.rgb(31, 23, 53), Color.rgb(19, 28, 45))
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(55, 31, 87), Color.rgb(25, 29, 53), Color.rgb(17, 22, 36))
             ).apply {
-                cornerRadii = floatArrayOf(
-                    0f, 0f, 0f, 0f,
-                    dp(20).toFloat(), dp(20).toFloat(),
-                    dp(20).toFloat(), dp(20).toFloat()
-                )
+                cornerRadius = dp(24).toFloat()
+                setStroke(dp(1), Color.rgb(78, 57, 112))
             }
+            elevation = dp(3).toFloat()
         }
 
         encabezado.addView(
-            texto(titulo, 26f, true).apply {
-                setTextColor(Color.WHITE)
+            texto("✦  ANIMEXSHADOW  /  MANGA", 10f, true).apply {
+                setTextColor(Color.rgb(211, 166, 255))
+                letterSpacing = 0.12f
             }
         )
 
         encabezado.addView(
-            texto("ANIMEXSHADOW  •  MANGA", 10f, true).apply {
-                setTextColor(acento)
-                letterSpacing = 0.08f
+            texto(titulo, 29f, true).apply {
+                setTextColor(Color.WHITE)
+                setPadding(0, dp(7), 0, dp(2))
+            }
+        )
+
+        encabezado.addView(
+            texto(
+                if (mostrandoFavoritos) "Tu colección personal, siempre a mano."
+                else if (mostrandoHistorial) "Retomá donde dejaste la lectura."
+                else if (mostrandoTodos) "Encontrá tu próxima historia favorita."
+                else "Mundos nuevos. Historias que enganchan.",
+                13f,
+                false
+            ).apply {
+                setTextColor(Color.rgb(190, 183, 208))
             }
         )
 
         if (conBuscador) {
             buscador = EditText(this).apply {
-                hint = "Buscar manga..."
+                hint = "⌕   Buscar manga, autor o género..."
                 setHintTextColor(textoSecundario)
                 setTextColor(textoColor)
                 textSize = 15f
@@ -337,7 +349,7 @@ class MainActivity : Activity() {
             )
         }
 
-        raiz.addView(encabezado)
+        raiz.addView(\n            encabezado,\n            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {\n                setMargins(dp(12), dp(10), dp(12), dp(8))\n            }\n        )
 
         scrollPrincipal = object : ScrollView(this) {
             override fun onScrollChanged(
@@ -373,7 +385,7 @@ class MainActivity : Activity() {
 
         contenido = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(12), dp(14), dp(24))
+            setPadding(dp(12), dp(10), dp(12), dp(24))
         }
 
         scrollPrincipal.addView(contenido)
