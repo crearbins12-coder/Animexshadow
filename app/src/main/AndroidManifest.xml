@@ -7,6 +7,10 @@
     android:theme="@android:style/Theme.Material.NoActionBar">
 
     <activity
+        android:name=".AnimePlayerActivity"
+        android:exported="false" />
+
+    <activity
         android:name=".MainActivity"
         android:exported="true">
 
