@@ -1,6 +1,8 @@
 package com.shademangalite.app
 
 import android.app.Activity
+import android.app.AlertDialog
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -34,6 +36,7 @@ class MainActivity : Activity() {
 
     private val apiBase = "https://shademanga.com"
     private val mangaApi = MangaApi(apiBase = apiBase)
+    private val animeApi by lazy { AnimeApi(apiBase = apiBase) }
     private val tamanoPaginaCatalogo = 100
 
     private val fondo = ShadeTheme.fondo
@@ -87,6 +90,10 @@ class MainActivity : Activity() {
 
     private var mostrandoFavoritos = false
     private var mostrandoHistorial = false
+    private var mostrandoAnime = false
+    private var mostrandoDetalleAnime = false
+    private var animeActual: Anime? = null
+    private var generacionAnime = 0
 
     private var lectorActivo = false
     private var lectorPantallaCompleta = false
@@ -121,6 +128,7 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         generacionCatalogo++
+        generacionAnime++
         ejecutor.shutdownNow()
         restaurarPantallaCompleta(false)
         super.onDestroy()
@@ -130,6 +138,10 @@ class MainActivity : Activity() {
     override fun onBackPressed() {
         when {
             lectorActivo -> salirDelLector()
+
+            mostrandoDetalleAnime -> mostrarAnime()
+
+            mostrandoAnime -> mostrarInicio()
 
             mostrandoFavoritos || mostrandoHistorial -> mostrarInicio()
 
@@ -228,6 +240,10 @@ class MainActivity : Activity() {
     // =====================================================
 
     private fun mostrarInicio() {
+        generacionAnime++
+        mostrandoAnime = false
+        mostrandoDetalleAnime = false
+        animeActual = null
         lectorActivo = false
         mostrandoTodos = false
         mostrandoFavoritos = false
@@ -368,6 +384,8 @@ class MainActivity : Activity() {
                 mostrandoTodos = mostrandoTodos,
                 mostrandoFavoritos = mostrandoFavoritos,
                 mostrandoHistorial = mostrandoHistorial,
+                mostrandoAnime = mostrandoAnime,
+                onAnime = { mostrarAnime() },
                 onInicio = { mostrarInicio() },
                 onMangas = { abrirTodosLosMangas() },
                 onFavoritos = { mostrarPantallaEspecial(true) },
@@ -376,6 +394,169 @@ class MainActivity : Activity() {
         )
 
         setContentView(raiz)
+    }
+
+    // =====================================================
+    // CATÁLOGO DE ANIME
+    // =====================================================
+
+    private fun mostrarAnime() {
+        generacionAnime++
+        mostrandoAnime = true
+        mostrandoDetalleAnime = false
+        animeActual = null
+        lectorActivo = false
+
+        lateinit var pantalla: AnimeCatalogScreen
+        pantalla = AnimeCatalogScreen(
+            context = this,
+            colorFondo = fondo,
+            colorTarjeta = tarjeta,
+            colorAcento = acento,
+            colorTexto = textoColor,
+            colorSecundario = textoSecundario,
+            onBuscar = { consulta -> cargarCatalogoAnime(pantalla, consulta) },
+            onSeleccionarAnime = { anime -> mostrarDetalleAnime(anime) }
+        )
+
+        val raizAnime = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(fondo)
+            addView(pantalla, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+            addView(NavigationBar(
+                context = this@MainActivity,
+                acento = acento,
+                textoSecundario = textoSecundario,
+                mostrandoTodos = false,
+                mostrandoFavoritos = false,
+                mostrandoHistorial = false,
+                mostrandoAnime = true,
+                onAnime = { mostrarAnime() },
+                onInicio = { mostrarInicio() },
+                onMangas = { abrirTodosLosMangas() },
+                onFavoritos = { mostrarPantallaEspecial(true) },
+                onHistorial = { mostrarPantallaEspecial(false) }
+            ))
+        }
+        setContentView(raizAnime)
+        cargarCatalogoAnime(pantalla, "")
+    }
+
+    private fun cargarCatalogoAnime(pantallaReferencia: AnimeCatalogScreen, busqueda: String) {
+        if (!mostrandoAnime || mostrandoDetalleAnime) return
+        val generacion = ++generacionAnime
+        pantallaReferencia.mostrarCargando()
+
+        ejecutor.execute {
+            try {
+                val resultado = animeApi.obtenerCatalogo(busqueda = busqueda, pagina = 1, tamanoPagina = 24, excluirAdultos = true)
+                runOnUiThread {
+                    if (isFinishing || isDestroyed || generacion != generacionAnime || !mostrandoAnime || mostrandoDetalleAnime) return@runOnUiThread
+                    pantallaReferencia.mostrarCatalogo(resultado.items)
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    if (isFinishing || isDestroyed || generacion != generacionAnime || !mostrandoAnime || mostrandoDetalleAnime) return@runOnUiThread
+                    pantallaReferencia.mostrarError("No se pudo cargar el anime.\n" + (e.message ?: "Error desconocido"))
+                }
+            }
+        }
+    }
+
+    private fun mostrarDetalleAnime(anime: Anime) {
+        generacionAnime++
+        mostrandoAnime = true
+        mostrandoDetalleAnime = true
+        animeActual = anime
+
+        val pantalla = AnimeDetailScreen(
+            context = this, colorFondo = fondo, colorTarjeta = tarjeta,
+            colorAcento = acento, colorTexto = textoColor, colorSecundario = textoSecundario,
+            onVolver = { mostrarAnime() },
+            onSeleccionarEpisodio = { episodio -> cargarEpisodioAnime(anime, episodio) }
+        )
+        val raizDetalle = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(fondo)
+            addView(pantalla, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+            addView(NavigationBar(
+                context = this@MainActivity, acento = acento, textoSecundario = textoSecundario,
+                mostrandoTodos = false, mostrandoFavoritos = false, mostrandoHistorial = false,
+                mostrandoAnime = true, onAnime = { mostrarAnime() }, onInicio = { mostrarInicio() },
+                onMangas = { abrirTodosLosMangas() }, onFavoritos = { mostrarPantallaEspecial(true) },
+                onHistorial = { mostrarPantallaEspecial(false) }
+            ))
+        }
+        setContentView(raizDetalle)
+        pantalla.mostrarCargando()
+
+        val generacion = generacionAnime
+        ejecutor.execute {
+            try {
+                val detalle = animeApi.obtenerDetalle(anime.token, excluirAdultos = true)
+                runOnUiThread {
+                    if (isFinishing || isDestroyed || generacion != generacionAnime || !mostrandoDetalleAnime) return@runOnUiThread
+                    pantalla.mostrarDetalle(detalle)
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    if (isFinishing || isDestroyed || generacion != generacionAnime || !mostrandoDetalleAnime) return@runOnUiThread
+                    pantalla.mostrarError("No se pudo cargar la ficha.\n" + (e.message ?: "Error desconocido"))
+                }
+            }
+        }
+    }
+
+    private fun cargarEpisodioAnime(anime: Anime, episodio: AnimeEpisodio) {
+        val dialogoCarga = AlertDialog.Builder(this).setMessage("Buscando servidores del episodio " + episodio.numero + "…").setCancelable(false).create()
+        dialogoCarga.show()
+        ejecutor.execute {
+            try {
+                val detalle = animeApi.obtenerEpisodio(anime.token, episodio.numero, excluirAdultos = true)
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) { dialogoCarga.dismiss(); return@runOnUiThread }
+                    dialogoCarga.dismiss()
+                    if (detalle.embeds.isEmpty()) {
+                        AlertDialog.Builder(this).setMessage("Este episodio no tiene servidores disponibles.").setPositiveButton("Aceptar", null).show()
+                        return@runOnUiThread
+                    }
+                    val opciones = detalle.embeds.map { it.servidor + if (it.idioma.isNotBlank()) " · " + it.idioma else "" }.toTypedArray()
+                    AlertDialog.Builder(this).setTitle("Episodio " + episodio.numero + ": elegir servidor").setItems(opciones) { _, indice -> resolverYReproducirAnime(detalle.embeds[indice]) }.setNegativeButton("Cancelar", null).show()
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    dialogoCarga.dismiss()
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    AlertDialog.Builder(this).setMessage("No se pudo obtener el episodio.\n" + (e.message ?: "Error desconocido")).setPositiveButton("Aceptar", null).show()
+                }
+            }
+        }
+    }
+
+    private fun resolverYReproducirAnime(embed: AnimeEmbed) {
+        val dialogoCarga = AlertDialog.Builder(this).setMessage("Preparando reproducción…").setCancelable(false).create()
+        dialogoCarga.show()
+        ejecutor.execute {
+            try {
+                val video = animeApi.resolver(embed.servidor, embed.embedUrl)
+                runOnUiThread {
+                    dialogoCarga.dismiss()
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    val mime = if (video.tipo.equals("hls", ignoreCase = true)) "application/vnd.apple.mpegurl" else "video/mp4"
+                    try {
+                        startActivity(Intent(Intent.ACTION_VIEW).apply { setDataAndType(Uri.parse(video.url), mime) })
+                    } catch (_: Exception) {
+                        AlertDialog.Builder(this).setTitle("No hay reproductor compatible").setMessage("Instalá VLC u otro reproductor compatible con " + video.tipo.uppercase() + " e intentá de nuevo.").setPositiveButton("Aceptar", null).show()
+                    }
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    dialogoCarga.dismiss()
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    AlertDialog.Builder(this).setMessage("No se pudo preparar el video.\n" + (e.message ?: "Error desconocido")).setPositiveButton("Aceptar", null).show()
+                }
+            }
+        }
     }
 
     // =====================================================
