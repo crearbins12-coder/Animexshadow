@@ -546,7 +546,7 @@ class MainActivity : Activity() {
                     val tokensExistentes = listaAnimeActual.map { it.token }.toHashSet()
                     listaAnimeActual.addAll(resultado.items.filter { it.token !in tokensExistentes })
                     totalAnime = resultado.total
-                    pantallaReferencia.mostrarCatalogo(listaAnimeActual.toList(), totalAnime, hayMas = listaAnimeActual.size < totalAnime)
+                    pantallaReferencia.mostrarCatalogo(listaAnimeActual.toList(, agregar = true), totalAnime, hayMas = listaAnimeActual.size < totalAnime)
                 }
             } catch (e: Exception) {
                 runOnUiThread {
