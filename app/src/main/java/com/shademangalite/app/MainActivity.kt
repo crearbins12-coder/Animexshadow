@@ -456,7 +456,7 @@ class MainActivity : Activity() {
                 val resultado = animeApi.obtenerCatalogo(busqueda = busqueda, pagina = 1, tamanoPagina = 24, excluirAdultos = true)
                 runOnUiThread {
                     if (isFinishing || isDestroyed || generacion != generacionAnime || !mostrandoAnime || mostrandoDetalleAnime) return@runOnUiThread
-                    pantallaReferencia.mostrarCatalogo(resultado.items)
+                    pantallaReferencia.mostrarCatalogo(resultado.items, resultado.total)
                 }
             } catch (e: Exception) {
                 runOnUiThread {
@@ -539,26 +539,35 @@ class MainActivity : Activity() {
     }
 
     private fun resolverYReproducirAnime(embed: AnimeEmbed) {
-        val dialogoCarga = AlertDialog.Builder(this).setMessage("Preparando reproducción…").setCancelable(false).create()
+        val dialogoCarga = AlertDialog.Builder(this)
+            .setMessage("Preparando reproducción…")
+            .setCancelable(false)
+            .create()
         dialogoCarga.show()
+
         ejecutor.execute {
             try {
                 val video = animeApi.resolver(embed.servidor, embed.embedUrl)
                 runOnUiThread {
                     dialogoCarga.dismiss()
                     if (isFinishing || isDestroyed) return@runOnUiThread
-                    val mime = if (video.tipo.equals("hls", ignoreCase = true)) "application/vnd.apple.mpegurl" else "video/mp4"
-                    try {
-                        startActivity(Intent(Intent.ACTION_VIEW).apply { setDataAndType(Uri.parse(video.url), mime) })
-                    } catch (_: Exception) {
-                        AlertDialog.Builder(this).setTitle("No hay reproductor compatible").setMessage("Instalá VLC u otro reproductor compatible con " + video.tipo.uppercase() + " e intentá de nuevo.").setPositiveButton("Aceptar", null).show()
-                    }
+
+                    startActivity(Intent(this, AnimePlayerActivity::class.java).apply {
+                        putExtra(AnimePlayerActivity.EXTRA_URL, video.url)
+                        putExtra(AnimePlayerActivity.EXTRA_TIPO, video.tipo)
+                        putExtra(AnimePlayerActivity.EXTRA_TITULO, animeActual?.titulo ?: "Anime")
+                        putExtra(AnimePlayerActivity.EXTRA_SERVIDOR, embed.servidor)
+                    })
                 }
             } catch (e: Exception) {
                 runOnUiThread {
                     dialogoCarga.dismiss()
                     if (isFinishing || isDestroyed) return@runOnUiThread
-                    AlertDialog.Builder(this).setMessage("No se pudo preparar el video.\n" + (e.message ?: "Error desconocido")).setPositiveButton("Aceptar", null).show()
+                    AlertDialog.Builder(this)
+                        .setTitle("No se pudo iniciar el video")
+                        .setMessage(e.message ?: "Error desconocido")
+                        .setPositiveButton("Aceptar", null)
+                        .show()
                 }
             }
         }
