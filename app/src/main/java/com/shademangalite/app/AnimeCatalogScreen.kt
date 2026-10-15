@@ -231,6 +231,18 @@ class AnimeCatalogScreen(
 
         estado.visibility = GONE
 
+        // Hero visual: la primera serie destaca antes de la cuadrícula.
+        agregarDestacado(animesSeguros.first())
+
+        contenido.addView(TextView(context).apply {
+            text = "✦  EXPLORÁ EL CATÁLOGO"
+            textSize = 11f
+            letterSpacing = 0.12f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(colorAcento)
+            setPadding(dp(4), dp(14), dp(4), dp(10))
+        }, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+
         val anchoPantalla = resources.displayMetrics.widthPixels
         val columnas = if (anchoPantalla >= dp(600)) 4 else 3
 
@@ -269,15 +281,103 @@ class AnimeCatalogScreen(
         }
     }
 
+    private fun agregarDestacado(anime: Anime) {
+        val destacado = FrameLayout(context).apply {
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(24, 21, 36))
+                cornerRadius = dp(22).toFloat()
+                setStroke(dp(1), Color.rgb(119, 74, 170))
+            }
+            clipToOutline = true
+            isClickable = true
+            isFocusable = true
+            contentDescription = "Destacado: ${anime.titulo}"
+            setOnClickListener { onSeleccionarAnime(anime) }
+        }
+
+        val portada = ImageView(context).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            setBackgroundColor(Color.rgb(42, 34, 57))
+            contentDescription = "Imagen destacada de ${anime.titulo}"
+        }
+        destacado.addView(
+            portada,
+            FrameLayout.LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                dp(228)
+            )
+        )
+
+        if (anime.portadaUrl.isNotBlank()) {
+            portada.load(anime.portadaUrl) {
+                crossfade(true)
+                memoryCachePolicy(CachePolicy.ENABLED)
+                diskCachePolicy(CachePolicy.ENABLED)
+                precision(Precision.INEXACT)
+                scale(Scale.FILL)
+                placeholder(fondoRedondeado(colorTarjeta, 16))
+                error(fondoRedondeado(Color.DKGRAY, 16))
+            }
+        }
+
+        val sombra = LinearLayout(context).apply {
+            orientation = VERTICAL
+            gravity = Gravity.BOTTOM
+            setPadding(dp(16), dp(42), dp(16), dp(16))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.TRANSPARENT, Color.argb(225, 12, 10, 20))
+            )
+        }
+        sombra.addView(TextView(context).apply {
+            text = "✦  DESTACADO  •  NEON EDITION"
+            textSize = 10f
+            letterSpacing = 0.1f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.rgb(99, 230, 255))
+        })
+        sombra.addView(TextView(context).apply {
+            text = anime.titulo
+            textSize = 21f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            maxLines = 2
+            setPadding(0, dp(5), 0, dp(2))
+        })
+        sombra.addView(TextView(context).apply {
+            text = "TOCÁ PARA DESCUBRIR  ↗"
+            textSize = 10f
+            letterSpacing = 0.07f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(colorAcento)
+            setPadding(0, dp(4), 0, 0)
+        })
+        destacado.addView(
+            sombra,
+            FrameLayout.LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                dp(150),
+                Gravity.BOTTOM
+            )
+        )
+
+        contenido.addView(
+            destacado,
+            LayoutParams(LayoutParams.MATCH_PARENT, dp(228)).apply {
+                bottomMargin = dp(8)
+            }
+        )
+    }
+
     private fun crearTarjeta(anime: Anime): View {
         val tarjeta = LinearLayout(context).apply {
             orientation = VERTICAL
             gravity = Gravity.TOP
             setPadding(dp(6), dp(6), dp(6), dp(10))
             background = GradientDrawable().apply {
-                setColor(Color.rgb(27, 24, 39))
-                cornerRadius = dp(16).toFloat()
-                setStroke(dp(1), Color.rgb(72, 54, 101))
+                setColor(Color.rgb(25, 22, 37))
+                cornerRadius = dp(18).toFloat()
+                setStroke(dp(1), Color.rgb(85, 59, 122))
             }
             isClickable = true
             isFocusable = true
@@ -297,7 +397,7 @@ class AnimeCatalogScreen(
             portada,
             LayoutParams(
                 LayoutParams.MATCH_PARENT,
-                dp(174)
+                dp(184)
             )
         )
 
