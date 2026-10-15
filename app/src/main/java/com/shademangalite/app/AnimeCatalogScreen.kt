@@ -167,7 +167,7 @@ class AnimeCatalogScreen(
         })
 
         encabezado.addView(TextView(context).apply {
-            text = "Tu próximo\\nanime favorito."
+            text = "Tu próximo\nanime favorito."
             textSize = 29f
             setLineSpacing(0f, 0.96f)
             setTypeface(null, Typeface.BOLD)
