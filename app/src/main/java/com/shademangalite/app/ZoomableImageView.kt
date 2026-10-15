@@ -7,7 +7,6 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.widget.ImageView
-import kotlin.math.max
 import kotlin.math.min
 
 /**
