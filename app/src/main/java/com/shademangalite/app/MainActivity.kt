@@ -713,8 +713,6 @@ class MainActivity : Activity() {
                     errorCargaCatalogo = false
 
                     mangasVisiblesPorCategoria.clear()
-                    relacionesAnimeMangaListas = false
-                    relacionesAnimeMangaCargando = false
                     mostrarCatalogoFiltrado()
                 }
             } catch (e: Exception) {
@@ -939,49 +937,6 @@ class MainActivity : Activity() {
         agregarCarrusel(recientes)
         espacio(20)
 
-        // Si hay coincidencias reales, se integran anime y manga en una sola sección.
-        cargarRelacionesAnimeManga()
-        val relacionesVisibles = relacionesAnimeManga.filter { relacion ->
-            lista.any { it.id == relacion.first.id }
-        }
-        if (relacionesVisibles.isNotEmpty()) {
-            tituloSeccion("Anime + Manga", "Series relacionadas")
-            for ((manga, anime, episodios) in relacionesVisibles.take(8)) {
-                val filaRelacion = LinearLayout(this).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    gravity = Gravity.CENTER_VERTICAL
-                    setPadding(dp(10), dp(9), dp(10), dp(9))
-                    background = crearFondo(tarjeta, 12)
-                    isClickable = true
-                    isFocusable = true
-                    setOnClickListener { mostrarSerie(manga) }
-                }
-                val portada = ImageView(this).apply {
-                    scaleType = ImageView.ScaleType.CENTER_CROP
-                    contentDescription = "Portada de ${manga.titulo}"
-                }
-                cargarPortada(portada, manga, 68, 8)
-                filaRelacion.addView(portada, LinearLayout.LayoutParams(dp(48), dp(68)))
-                val info = LinearLayout(this).apply {
-                    orientation = LinearLayout.VERTICAL
-                    setPadding(dp(10), 0, 0, 0)
-                }
-                info.addView(texto(manga.titulo, 14f, true).apply {
-                    maxLines = 2
-                    setTextColor(Color.WHITE)
-                })
-                info.addView(texto(
-                    "${manga.capitulos} capítulos  ·  ${if (episodios > 0) "$episodios episodios" else "Anime disponible"}",
-                    11f, false
-                ).apply { setTextColor(Color.rgb(111, 218, 245)); setPadding(0, dp(4), 0, 0) })
-                filaRelacion.addView(info, LinearLayout.LayoutParams(0,
-                    LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-                contenido.addView(filaRelacion)
-                espacio(7)
-            }
-            espacio(14)
-        }
-
         tituloSeccion("Géneros")
         val generos = linkedSetOf<String>()
         lista.forEach { serie ->
@@ -1041,106 +996,6 @@ class MainActivity : Activity() {
                 gravity = Gravity.CENTER
                 setTextColor(textoSecundario)
             })
-        }
-    }
-
-    private var relacionesAnimeMangaCargando = false
-    private var relacionesAnimeMangaListas = false
-    private var relacionesAnimeManga = listOf<Triple<Serie, Anime, Int>>()
-
-    private fun normalizarTituloRelacion(titulo: String): String =
-        java.text.Normalizer.normalize(titulo.lowercase(), java.text.Normalizer.Form.NFD)
-            .replace(Regex("\\p{Mn}+"), "")
-            .replace(Regex("\\b(the|season|part|tv|anime|manga)\\b"), " ")
-            .replace(Regex("[^a-z0-9]+"), " ")
-            .replace(Regex("\\s+"), " ")
-            .trim()
-
-    private fun titulosCoinciden(manga: String, anime: String): Boolean {
-        val a = normalizarTituloRelacion(manga)
-        val b = normalizarTituloRelacion(anime)
-        if (a.isBlank() || b.isBlank()) return false
-        if (a == b || a.startsWith(b) || b.startsWith(a)) return true
-        val tokensA = a.split(" ").filter { it.length > 2 }.toSet()
-        val tokensB = b.split(" ").filter { it.length > 2 }.toSet()
-        if (tokensA.isEmpty() || tokensB.isEmpty()) return false
-        val similitud = tokensA.intersect(tokensB).size.toDouble() /
-            minOf(tokensA.size, tokensB.size).toDouble()
-        return similitud >= 0.8
-    }
-
-    private fun mangaTieneAnime(serie: Serie): Boolean =
-        relacionesAnimeManga.any { it.first.id == serie.id }
-
-    private fun cargarRelacionesAnimeManga() {
-        if (relacionesAnimeMangaListas || relacionesAnimeMangaCargando || catalogo.isEmpty()) return
-        relacionesAnimeMangaCargando = true
-        val generacion = generacionCatalogo
-        ejecutor.execute {
-            val coincidencias = mutableListOf<Triple<Serie, Anime, Int>>()
-            try {
-                val todosLosMangas = mutableListOf<Serie>()
-                val idsManga = mutableSetOf<String>()
-                for (paginaManga in 1..5) {
-                    val paginaJson = runCatching {
-                        JSONArray(consultarApi("/api/series-locales?pageSize=100&page=$paginaManga"))
-                    }.getOrNull() ?: break
-                    val paginaSeries = analizarSeries(paginaJson)
-                    if (paginaSeries.isEmpty()) break
-                    paginaSeries.forEach { if (idsManga.add(it.id)) todosLosMangas.add(it) }
-                    if (paginaSeries.size < 100) break
-                }
-
-                val catalogoAnime = mutableListOf<Anime>()
-                val idsAnime = mutableSetOf<String>()
-                var totalAnime = 0
-                for (paginaAnime in 1..5) {
-                    val pagina = runCatching {
-                        animeApi.obtenerCatalogo(pagina = paginaAnime, tamanoPagina = 100, excluirAdultos = true)
-                    }.getOrNull() ?: break
-                    if (pagina.items.isEmpty()) break
-                    pagina.items.forEach { if (idsAnime.add(it.token)) catalogoAnime.add(it) }
-                    totalAnime = pagina.total
-                    if (catalogoAnime.size >= totalAnime) break
-                }
-
-                for (manga in todosLosMangas.filter { !it.esMayorDeEdad }) {
-                    if (coincidencias.size >= 500) break
-                    val animeCoincidente = catalogoAnime
-                        .filter { titulosCoinciden(manga.titulo, it.titulo) }
-                        .maxByOrNull { anime ->
-                            val a = normalizarTituloRelacion(manga.titulo)
-                            val b = normalizarTituloRelacion(anime.titulo)
-                            when {
-                                a == b -> 3
-                                a.startsWith(b) || b.startsWith(a) -> 2
-                                else -> 1
-                            }
-                        }
-                    if (animeCoincidente != null && coincidencias.none {
-                            it.first.id == manga.id || it.second.token == animeCoincidente.token
-                        }) {
-                        val episodios = runCatching {
-                            animeApi.obtenerDetalle(animeCoincidente.token, true).numEpisodios
-                        }.getOrDefault(0)
-                        coincidencias.add(Triple(manga, animeCoincidente, episodios))
-                    }
-                }
-            } catch (_: Exception) {
-                // El catálogo de manga sigue funcionando si el catálogo de anime falla.
-            }
-
-            runOnUiThread {
-                relacionesAnimeMangaCargando = false
-                if (isFinishing || isDestroyed || generacion != generacionCatalogo) return@runOnUiThread
-                relacionesAnimeManga = coincidencias
-                relacionesAnimeMangaListas = true
-                if (::contenido.isInitialized && !mostrandoAnime && !mostrandoDetalleAnime &&
-                    !mostrandoTodos && !mostrandoFavoritos && !mostrandoHistorial &&
-                    filtroActual.isBlank() && !lectorActivo) {
-                    mostrarCatalogoFiltrado()
-                }
-            }
         }
     }
 
@@ -1271,7 +1126,6 @@ class MainActivity : Activity() {
         return MangaCarouselCard(
             context = this,
             serie = serie,
-            tieneAnime = mangaTieneAnime(serie),
             colorTarjeta = tarjeta,
             colorTextoSecundario = textoSecundario,
             crearFondo = { color, radio ->
