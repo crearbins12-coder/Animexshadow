@@ -433,12 +433,10 @@ class AnimeApi(
 
         val respuesta = consultar(ruta)
 
-        val tipo = obtenerTexto(respuesta, "tipo")
+        val tipoInformado = obtenerTexto(respuesta, "tipo")
             .lowercase()
-
-        require(tipo == "mp4" || tipo == "hls") {
-            "Formato de video no compatible: $tipo"
-        }
+            .substringBefore(";")
+            .trim()
 
         val urlVideo = obtenerTexto(respuesta, "url")
 
@@ -446,7 +444,30 @@ class AnimeApi(
             "La API no devolvió una dirección de reproducción."
         }
 
-        val urlCompleta = URL(URL(apiBase), urlVideo)
+        // Algunos servidores usan nombres MIME distintos para el mismo formato.
+        // Normalizamos esos alias antes de entregarle el enlace a Media3.
+        val urlVideoParseada = URL(URL(apiBase), urlVideo)
+        val rutaVideo = urlVideoParseada.path.lowercase()
+
+        val tipo = when (tipoInformado) {
+            "mp4", "video/mp4" -> "mp4"
+            "hls",
+            "m3u8",
+            "mpegurl",
+            "application/x-mpegurl",
+            "application/vnd.apple.mpegurl",
+            "application/mpegurl" -> "hls"
+            else -> when {
+                rutaVideo.endsWith(".m3u8") -> "hls"
+                rutaVideo.endsWith(".mp4") -> "mp4"
+                else -> throw IllegalStateException(
+                    "El servidor «$servidor» devolvió un formato que el reproductor no puede abrir directamente " +
+                        "($tipoInformado). Probá otro servidor para este episodio."
+                )
+            }
+        }
+
+        val urlCompleta = urlVideoParseada
 
         require(
             urlCompleta.protocol == "https" &&
