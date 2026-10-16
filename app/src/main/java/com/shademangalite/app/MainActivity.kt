@@ -2637,6 +2637,8 @@ class MainActivity : Activity() {
                     setPadding(dp(8), dp(11), dp(8), dp(11))
                     background = crearFondo(if (cat == categoria) acento else Color.rgb(43, 36, 56), 14)
                     isClickable = true; isFocusable = true
+                    isSelected = cat == categoria
+                    contentDescription = "$cat, ${cantidadesPerfil[cat] ?: 0} obras" + if (cat == categoria) ", seleccionada" else ""
                     setOnClickListener { renderizar(cat) }
                 }
                 filaCategorias.addView(boton, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(44)).apply {
