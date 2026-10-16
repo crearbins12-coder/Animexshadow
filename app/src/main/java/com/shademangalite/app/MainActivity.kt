@@ -164,31 +164,12 @@ class MainActivity : Activity() {
     }
 
     private fun esAnimeFavorito(anime: Anime): Boolean =
-        obtenerAnimesFavoritos().any { it.token == anime.token }
+        obtenerAnimesEstado("Me gusta").any { it.token == anime.token } ||
+            obtenerAnimesFavoritos().any { it.token == anime.token }
 
     private fun alternarAnimeFavorito(anime: Anime): Boolean {
-        val lista = obtenerAnimesFavoritos()
-        val yaGuardado = lista.any { it.token == anime.token }
-        if (yaGuardado) {
-            lista.removeAll { it.token == anime.token }
-        } else {
-            lista.add(0, anime)
-        }
-        val array = JSONArray()
-        lista.forEach { item ->
-            array.put(
-                JSONObject()
-                    .put("token", item.token)
-                    .put("slug", item.slug)
-                    .put("titulo", item.titulo)
-                    .put("tipo", item.tipo)
-                    .put("estado", item.estado)
-                    .put("generos", item.generos)
-                    .put("puntuacion", item.puntuacion)
-                    .put("portadaUrl", item.portadaUrl)
-            )
-        }
-        preferencias.edit().putString("anime_favoritos_datos", array.toString()).apply()
+        val yaGuardado = esAnimeFavorito(anime)
+        guardarEstadoAnime(anime, if (yaGuardado) null else "Me gusta")
         return !yaGuardado
     }
 
@@ -345,15 +326,13 @@ class MainActivity : Activity() {
     }
 
     private fun esFavorito(serie: Serie): Boolean {
-        return favoritos.contains(serie.id)
+        return obtenerMangasEstado("Me gusta").any { it.id == serie.id } || favoritos.contains(serie.id)
     }
 
     private fun alternarFavorito(serie: Serie) {
-        guardarSerieLocal(serie)
-        if (!favoritos.add(serie.id)) {
-            favoritos.remove(serie.id)
-        }
-
+        val yaGuardado = esFavorito(serie)
+        guardarEstadoManga(serie, if (yaGuardado) null else "Me gusta")
+        favoritos.remove(serie.id)
         guardarFavoritos()
     }
 
@@ -513,6 +492,9 @@ class MainActivity : Activity() {
             }
             contentDescription = "Perfil"
         }
+        botonPerfil.setOnClickListener { mostrarPerfil() }
+        botonPerfil.isClickable = true
+        botonPerfil.isFocusable = true
         barraSuperior.addView(botonPerfil, LinearLayout.LayoutParams(dp(40), dp(40)))
         raiz.addView(barraSuperior, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, dp(60)
@@ -633,7 +615,7 @@ class MainActivity : Activity() {
             onAnime = { mostrarAnime() },
             onInicio = { mostrarInicio() },
             onMangas = { abrirTodosLosMangas() },
-            onFavoritos = { mostrarPantallaEspecial(true) },
+            onFavoritos = { mostrarPerfil() },
             onHistorial = { mostrarPantallaEspecial(false) }
         )
         raiz.addView(nav, LinearLayout.LayoutParams(
@@ -857,7 +839,7 @@ class MainActivity : Activity() {
             setBackgroundColor(fondo)
             addView(pantalla, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
             val botonMiLista = TextView(this@MainActivity).apply {
-                text = if (esAnimeFavorito(anime)) "★  EN MI LISTA" else "＋  AGREGAR A MI LISTA"
+                text = if (esAnimeFavorito(anime)) "♥  ME GUSTA" else "♡  ME GUSTA"
                 textSize = 13f
                 typeface = Typeface.DEFAULT_BOLD
                 gravity = Gravity.CENTER
@@ -868,10 +850,10 @@ class MainActivity : Activity() {
                 isFocusable = true
                 setOnClickListener {
                     val guardado = alternarAnimeFavorito(anime)
-                    text = if (guardado) "★  EN MI LISTA" else "＋  AGREGAR A MI LISTA"
+                    text = if (guardado) "♥  ME GUSTA" else "♡  ME GUSTA"
                     Toast.makeText(
                         this@MainActivity,
-                        if (guardado) "Agregado a Mi lista" else "Quitado de Mi lista",
+                        if (guardado) "Agregado a Me gusta" else "Quitado de Me gusta",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -2259,11 +2241,11 @@ class MainActivity : Activity() {
         }
 
         // Estante de favoritos personal, disponible desde el inicio.
-        val seriesFavoritas = favoritos.mapNotNull { id ->
+        val seriesFavoritas = (obtenerMangasEstado("Me gusta") + favoritos.mapNotNull { id ->
             catalogo.firstOrNull { it.id == id } ?: seriesGuardadas[id]
-        }.distinctBy { it.id }
+        }).distinctBy { it.id }
         if (seriesFavoritas.isNotEmpty()) {
-            tituloSeccion("Mi lista", "Ver todos  ›")
+            tituloSeccion("♥  Me gusta", "Abrir perfil  ›")
             agregarCarrusel(seriesFavoritas)
             espacio(20)
         }
