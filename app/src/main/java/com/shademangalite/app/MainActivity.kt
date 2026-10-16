@@ -1452,8 +1452,13 @@ class MainActivity : Activity() {
                 it.genero.contains(filtroActual, ignoreCase = true)
         }
 
-        if (catalogo.isEmpty()) {
-            contenido.addView(texto("Cargando mangas...", 16f, false))
+        // La portada de anime no debe quedar bloqueada esperando el catálogo de manga.
+        // Si ya llegó anime desde la API, la pantalla principal puede renderizarse con esa fuente.
+        if (catalogo.isEmpty() && animesDestacadosInicio.isEmpty()) {
+            contenido.addView(texto("Preparando tu universo otaku...", 16f, false).apply {
+                setTextColor(textoSecundario)
+                setPadding(0, dp(24), 0, dp(24))
+            })
             return
         }
 
