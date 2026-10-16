@@ -2610,7 +2610,7 @@ class MainActivity : Activity() {
                 textSize = 13f; setTextColor(textoSecundario); setPadding(dp(4), dp(4), dp(4), dp(12))
             })
             mangas.forEach { serie ->
-                lista.addView(crearTarjetaPerfil(serie.titulo, serie.portadaUrl, "Manga", categoria) {
+                lista.addView(crearTarjetaPerfil(serie.titulo, serie.portadaUrl, "Manga", categoria, serie.id) {
                     mostrarSerie(serie)
                 }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(8) })
             }
@@ -2624,7 +2624,7 @@ class MainActivity : Activity() {
                 textSize = 13f; setTextColor(textoSecundario); setPadding(dp(4), dp(4), dp(4), dp(12))
             })
             animes.forEach { anime ->
-                lista.addView(crearTarjetaPerfil(anime.titulo, anime.portadaUrl.ifBlank { preferencias.getString("anime_portada_${anime.token}", "").orEmpty() }, "Anime", categoria) {
+                lista.addView(crearTarjetaPerfil(anime.titulo, anime.portadaUrl.ifBlank { preferencias.getString("anime_portada_${anime.token}", "").orEmpty() }, "Anime", categoria, anime.token) {
                     mostrarDetalleAnime(anime)
                 }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(8) })
             }
@@ -2641,7 +2641,7 @@ class MainActivity : Activity() {
         renderizar(categoriaInicial)
     }
 
-    private fun crearTarjetaPerfil(titulo: String, portadaUrl: String, tipo: String, categoria: String, alTocar: () -> Unit): View {
+    private fun crearTarjetaPerfil(titulo: String, portadaUrl: String, tipo: String, categoria: String, idObra: String, alTocar: () -> Unit): View {
         val fila = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(9), dp(9), dp(9), dp(9)); background = crearFondo(tarjeta, 13)
@@ -2665,10 +2665,10 @@ class MainActivity : Activity() {
                 AlertDialog.Builder(this@MainActivity).setTitle(titulo).setItems(opciones) { _, which ->
                     val destino = when (which) { 0 -> "Me gusta"; 1 -> "Viendo"; 2 -> "Ver más tarde"; else -> null }
                     if (tipo == "Anime") {
-                        val anime = (obtenerAnimesEstado(categoria) + animesDestacadosInicio + obtenerAnimesFavoritos()).firstOrNull { it.titulo == titulo }
+                        val anime = (obtenerAnimesEstado(categoria) + animesDestacadosInicio + obtenerAnimesFavoritos()).firstOrNull { it.token == idObra }
                         if (anime != null) guardarEstadoAnime(anime, destino)
                     } else {
-                        val serie = obtenerMangasEstado(categoria).firstOrNull { it.titulo == titulo }
+                        val serie = obtenerMangasEstado(categoria).firstOrNull { it.id == idObra }
                         if (serie != null) guardarEstadoManga(serie, destino)
                     }
                     renderizarPerfilDespuesDeCambio(categoria)
