@@ -1856,6 +1856,14 @@ class MainActivity : Activity() {
     // =====================================================
 
     private fun mostrarLector(serie: Serie, capitulo: Capitulo) {
+        // Guardar el capítulo que estaba abierto antes de cambiar las referencias
+        // evita que un guardado diferido termine escribiendo el progreso en el capítulo nuevo.
+        if (lectorActivo) {
+            tareaGuardarProgreso?.let(manejadorProgreso::removeCallbacks)
+            tareaGuardarProgreso = null
+            guardarProgreso()
+        }
+
         val generacion = ++generacionLector
 
         if (!lectorActivo) {
