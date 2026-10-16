@@ -55,6 +55,13 @@ class AnimePlayerActivity : Activity() {
             return
         }
 
+        // Recordar la elección: los próximos videos se abrirán directamente en VLC.
+        if (getPreferences(MODE_PRIVATE).getBoolean("usar_vlc_siempre", false)) {
+            abrirVlcExterno(url, tipo)
+            finish()
+            return
+        }
+
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         val vista = PlayerView(this).apply {
             useController = true
@@ -83,7 +90,7 @@ class AnimePlayerActivity : Activity() {
             Gravity.TOP or Gravity.START
         ))
         val botonVlc = TextView(this).apply {
-            text = "Probar VLC"
+            text = "Usar VLC siempre"
             setTextColor(Color.WHITE)
             setBackgroundColor(0xCC512DA8.toInt())
             textSize = 14f
@@ -91,24 +98,9 @@ class AnimePlayerActivity : Activity() {
             isClickable = true
             isFocusable = true
             setOnClickListener {
-                val videoUrl = intent.getStringExtra(EXTRA_URL).orEmpty()
-                val videoTipo = intent.getStringExtra(EXTRA_TIPO).orEmpty().lowercase()
-                val mime = if (videoTipo == "hls") "application/vnd.apple.mpegurl" else "video/mp4"
-                val vlcIntent = Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(android.net.Uri.parse(videoUrl), mime)
-                    setPackage("org.videolan.vlc")
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                try {
-                    player?.pause()
-                    startActivity(vlcIntent)
-                } catch (_: android.content.ActivityNotFoundException) {
-                    Toast.makeText(
-                        this@AnimePlayerActivity,
-                        "No se pudo abrir VLC con este enlace. Comprobá que VLC esté instalado y actualizado.",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
+                getPreferences(MODE_PRIVATE).edit().putBoolean("usar_vlc_siempre", true).apply()
+                player?.pause()
+                abrirVlcExterno(url, tipo)
             }
         }
         contenedor.addView(botonVlc, FrameLayout.LayoutParams(
@@ -187,6 +179,21 @@ class AnimePlayerActivity : Activity() {
         exo.setMediaItem(item)
         exo.prepare()
         exo.playWhenReady = true
+    }
+
+    private fun abrirVlcExterno(videoUrl: String, videoTipo: String) {
+        val mime = if (videoTipo == "hls") "application/vnd.apple.mpegurl" else "video/mp4"
+        val vlcIntent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(android.net.Uri.parse(videoUrl), mime)
+            setPackage("org.videolan.vlc")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        try {
+            startActivity(vlcIntent)
+        } catch (_: android.content.ActivityNotFoundException) {
+            getPreferences(MODE_PRIVATE).edit().putBoolean("usar_vlc_siempre", false).apply()
+            Toast.makeText(this, "No se pudo abrir VLC. Se desactivó la opción de usarlo siempre.", Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onStop() {
