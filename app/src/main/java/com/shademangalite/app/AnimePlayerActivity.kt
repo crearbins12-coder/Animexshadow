@@ -219,7 +219,10 @@ class AnimePlayerActivity : Activity() {
             if (duracion > 0L && posicion >= (duracion * 0.9).toLong()) {
                 marcarEpisodioComoVisto()
             }
-            preferencias.edit().putLong(clave, posicion).apply()
+            preferencias.edit()
+                .putLong(clave, posicion)
+                .putLong("${clave}_duracion", duracion.coerceAtLeast(0L))
+                .apply()
             preferencias.edit()
                 .putString("anime_ultimo_token", tokenAnime)
                 .putInt("anime_ultimo_numero", numeroEpisodio)
