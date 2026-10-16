@@ -14,6 +14,42 @@ class AnimeApi(
 
     private val hostPermitido = "shademanga.com"
 
+    // Caché LRU pequeña y con vencimiento para reutilizar catálogos y fichas
+    // al volver de una pantalla, sin retener datos indefinidamente.
+    private data class EntradaCache(
+        val venceEn: Long,
+        val valor: Any
+    )
+
+    private val cache = object : LinkedHashMap<String, EntradaCache>(16, 0.75f, true) {
+        override fun removeEldestEntry(
+            eldest: MutableMap.MutableEntry<String, EntradaCache>?
+        ): Boolean = size > 40
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun <T : Any> leerCache(clave: String): T? = synchronized(cache) {
+        val entrada = cache[clave] ?: return@synchronized null
+        if (System.nanoTime() / 1_000_000L >= entrada.venceEn) {
+            cache.remove(clave)
+            return@synchronized null
+        }
+        entrada.valor as? T
+    }
+
+    private fun guardarCache(
+        clave: String,
+        valor: Any,
+        duracionMs: Long = 90_000L
+    ) {
+        synchronized(cache) {
+            cache[clave] = EntradaCache(
+                venceEn = System.nanoTime() / 1_000_000L + duracionMs,
+                valor = valor
+            )
+        }
+    }
+
     private fun limpiar(valor: String?): String {
         return valor
             ?.trim()
@@ -181,9 +217,14 @@ class AnimeApi(
         excluirAdultos: Boolean = true
     ): AnimeCatalogo {
 
+        val paginaSegura = pagina.coerceAtLeast(1)
+        val tamanoSeguro = tamanoPagina.coerceIn(1, 100)
+        val claveCache = "catalogo|${busqueda.trim()}|${genero.trim()}|${tipo.trim()}|${estado.trim()}|$paginaSegura|$tamanoSeguro|$excluirAdultos"
+        leerCache<AnimeCatalogo>(claveCache)?.let { return it }
+
         val parametros = mutableListOf(
-            "page=${pagina.coerceAtLeast(1)}",
-            "pageSize=${tamanoPagina.coerceIn(1, 100)}",
+            "page=$paginaSegura",
+            "pageSize=$tamanoSeguro",
             "excludeAdult=$excluirAdultos"
         )
 
@@ -230,15 +271,17 @@ class AnimeApi(
             items.add(anime)
         }
 
-        return AnimeCatalogo(
+        val resultado = AnimeCatalogo(
             total = respuesta.optInt("total", items.size),
-            pagina = respuesta.optInt("page", pagina),
+            pagina = respuesta.optInt("page", paginaSegura),
             tamanoPagina = respuesta.optInt(
                 "pageSize",
-                tamanoPagina
+                tamanoSeguro
             ),
             items = items.distinctBy { it.token }
         )
+        guardarCache(claveCache, resultado)
+        return resultado
     }
 
     fun obtenerDetalle(
@@ -249,6 +292,9 @@ class AnimeApi(
         require(token.matches(Regex("[A-Za-z0-9_-]+"))) {
             "Identificador de anime no válido"
         }
+
+        val claveCache = "detalle|$token|$excluirAdultos"
+        leerCache<AnimeDetalle>(claveCache)?.let { return it }
 
         val respuesta = consultar("/api/anime/$token")
         val anime = convertirAnime(respuesta)
@@ -287,7 +333,7 @@ class AnimeApi(
             )
         }
 
-        return AnimeDetalle(
+        val resultado = AnimeDetalle(
             anime = anime,
             sinopsis = obtenerTexto(respuesta, "sinopsis"),
             titulosAlternativos = obtenerTexto(
@@ -311,6 +357,8 @@ class AnimeApi(
             ),
             episodios = episodios.sortedBy { it.numero }
         )
+        guardarCache(claveCache, resultado)
+        return resultado
     }
 
     fun obtenerEpisodio(
@@ -394,17 +442,21 @@ class AnimeApi(
     }
 
     fun obtenerServidores(): List<String> {
+        leerCache<List<String>>("servidores")?.let { return it }
+
         val respuesta = consultar("/api/anime/servers")
         val array = respuesta.optJSONArray("supported")
             ?: JSONArray()
 
-        return (0 until array.length())
+        val resultado = (0 until array.length())
             .mapNotNull { i ->
                 limpiar(array.optString(i, ""))
                     .lowercase()
                     .takeIf { it.isNotBlank() }
             }
             .distinct()
+        guardarCache("servidores", resultado, 300_000L)
+        return resultado
     }
 
     private fun buscarUrlReproduccion(objeto: JSONObject): String {
