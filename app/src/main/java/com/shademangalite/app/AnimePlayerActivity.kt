@@ -12,6 +12,7 @@ import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
@@ -67,7 +68,12 @@ class AnimePlayerActivity : Activity() {
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()
 
-        val exo = ExoPlayer.Builder(this)
+        // Si un decodificador de video no funciona bien con cierto codec,
+        // permite probar otro decodificador compatible del dispositivo.
+        val renderersFactory = DefaultRenderersFactory(this)
+            .setEnableDecoderFallback(true)
+
+        val exo = ExoPlayer.Builder(this, renderersFactory)
             .setMediaSourceFactory(mediaSourceFactory)
             .setLoadControl(loadControl)
             .build()
