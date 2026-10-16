@@ -1708,13 +1708,31 @@ class MainActivity : Activity() {
                     }
                     setPadding(dp(13), dp(11), dp(13), dp(11))
                 }
+                val animeGuardado = (animesDestacadosInicio + obtenerAnimesFavoritos())
+                    .firstOrNull { it.token == ultimoTokenAnime }
+                if (animeGuardado != null && animeGuardado.portadaUrl.isNotBlank()) {
+                    val portadaContinuar = ImageView(this).apply {
+                        scaleType = ImageView.ScaleType.CENTER_CROP
+                        contentDescription = "Portada de ${animeGuardado.titulo}"
+                        load(animeGuardado.portadaUrl) {
+                            crossfade(true)
+                            memoryCachePolicy(CachePolicy.ENABLED)
+                            diskCachePolicy(CachePolicy.ENABLED)
+                            precision(Precision.INEXACT)
+                            scale(Scale.FILL)
+                        }
+                    }
+                    continuar.addView(portadaContinuar, LinearLayout.LayoutParams(dp(76), dp(108)).apply {
+                        marginEnd = dp(12)
+                    })
+                }
                 val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-                info.addView(texto("ANIME", 10f, true).apply {
+                info.addView(texto("ANIME · SEGUÍ DONDE LO DEJASTE", 10f, true).apply {
                     setTextColor(Color.rgb(185, 130, 255))
-                    letterSpacing = 0.12f
+                    letterSpacing = 0.06f
                 })
                 info.addView(texto(
-                    tituloUltimoAnime.ifBlank { "Episodio $ultimoNumeroAnime" },
+                    animeGuardado?.titulo ?: tituloUltimoAnime.ifBlank { "Episodio $ultimoNumeroAnime" },
                     15f,
                     true
                 ).apply {
@@ -1727,6 +1745,22 @@ class MainActivity : Activity() {
                     setTextColor(Color.rgb(174, 160, 193))
                     setPadding(0, dp(3), 0, 0)
                 })
+                val claveProgreso = "anime_progreso_${ultimoTokenAnime}_${ultimoNumeroAnime}"
+                val posicionGuardada = preferencias.getLong(claveProgreso, 0L)
+                val duracionGuardada = preferencias.getLong("${claveProgreso}_duracion", 0L)
+                if (posicionGuardada > 0L && duracionGuardada > 0L) {
+                    val porcentaje = ((posicionGuardada * 100L) / duracionGuardada).toInt().coerceIn(0, 100)
+                    info.addView(texto("$porcentaje% visto", 10f, true).apply {
+                        setTextColor(Color.rgb(205, 174, 255))
+                        setPadding(0, dp(6), 0, dp(3))
+                    })
+                    info.addView(ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+                        max = 100
+                        progress = porcentaje
+                        progressTintList = android.content.res.ColorStateList.valueOf(acento)
+                        progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(67, 57, 79))
+                    }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(5)))
+                }
                 continuar.addView(info, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
                 continuar.addView(TextView(this).apply {
                     text = "▶ CONTINUAR"
