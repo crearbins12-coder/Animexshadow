@@ -309,9 +309,27 @@ class MainActivity : Activity() {
 
     private fun programarGuardarProgreso() {
         tareaGuardarProgreso?.let(manejadorProgreso::removeCallbacks)
-        val tarea = Runnable {
-            tareaGuardarProgreso = null
-            guardarProgreso()
+
+        // La tarea pertenece al capítulo que estaba abierto al programarla.
+        // Si el usuario cambia de capítulo antes de ejecutarse, no debe guardar
+        // la página/posición del lector nuevo usando una tarea vieja.
+        val generacionProgramada = generacionLector
+        val serieProgramada = serieLector
+        val capituloProgramado = capituloLector
+
+        lateinit var tarea: Runnable
+        tarea = Runnable {
+            if (
+                generacionProgramada == generacionLector &&
+                lectorActivo &&
+                serieProgramada === serieLector &&
+                capituloProgramado === capituloLector
+            ) {
+                tareaGuardarProgreso = null
+                guardarProgreso()
+            } else if (tareaGuardarProgreso === tarea) {
+                tareaGuardarProgreso = null
+            }
         }
         tareaGuardarProgreso = tarea
         manejadorProgreso.postDelayed(tarea, 300L)
