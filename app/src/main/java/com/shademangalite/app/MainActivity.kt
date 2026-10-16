@@ -71,13 +71,7 @@ class MainActivity : Activity() {
     private val manejadorProgreso = Handler(Looper.getMainLooper())
     private var tareaGuardarProgreso: Runnable? = null
     private var busquedaMangaPendiente: Runnable? = null
-    // Caché LRU de búsquedas: conserva los resultados usados recientemente.
-    private val cacheBusquedaManga =
-        object : LinkedHashMap<String, List<Serie>>(16, 0.75f, true) {
-            override fun removeEldestEntry(
-                eldest: MutableMap.MutableEntry<String, List<Serie>>?
-            ): Boolean = size > 40
-        }
+    private val cacheBusquedaManga = ConcurrentHashMap<String, List<Serie>>()
     private val maxEntradasCacheBusqueda = 40
     // Cachés en memoria para que volver a una ficha o capítulo no repita la API.
     private val cacheCapitulosPorSerie = ConcurrentHashMap<String, List<Capitulo>>()
