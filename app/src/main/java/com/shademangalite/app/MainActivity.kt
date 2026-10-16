@@ -1575,6 +1575,100 @@ class MainActivity : Activity() {
         contenido.addView(horizontal)
     }
 
+    private fun agregarCarruselHistorialAnime(excluirToken: String, excluirEpisodio: Int) {
+        val historial = runCatching {
+            val items = JSONArray(preferencias.getString("anime_historial", "[]").orEmpty())
+            (0 until items.length()).mapNotNull { items.optJSONObject(it) }
+                .filter { it.optString("token").isNotBlank() && it.optInt("episodio") > 0 }
+                .distinctBy { "${it.optString("token")}_${it.optInt("episodio")}" }
+                .filterNot {
+                    it.optString("token") == excluirToken && it.optInt("episodio") == excluirEpisodio
+                }
+                .take(10)
+        }.getOrDefault(emptyList())
+        if (historial.isEmpty()) return
+
+        val animesDisponibles = (animesDestacadosInicio + obtenerAnimesFavoritos())
+            .distinctBy { it.token }
+        contenido.addView(texto("TUS EPISODIOS RECIENTES", 11f, true).apply {
+            setTextColor(Color.rgb(190, 145, 255))
+            letterSpacing = 0.10f
+            setPadding(dp(2), dp(2), 0, dp(9))
+        })
+        val scroll = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            clipToPadding = false
+            setPadding(0, dp(2), 0, dp(5))
+        }
+        val fila = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        historial.forEach { item ->
+            val token = item.optString("token")
+            val episodio = item.optInt("episodio")
+            val anime = animesDisponibles.firstOrNull { it.token == token }
+            val tarjetaHistorial = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                isClickable = true
+                isFocusable = true
+                background = crearFondo(Color.rgb(25, 21, 35), 13)
+                clipToOutline = true
+                setOnClickListener { reproducirEpisodioGuardado(token, episodio) }
+            }
+            val marco = FrameLayout(this).apply {
+                background = crearFondo(Color.rgb(35, 29, 49), 10)
+                clipToOutline = true
+            }
+            val portada = ImageView(this).apply {
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                contentDescription = anime?.titulo ?: item.optString("titulo")
+                if (!anime?.portadaUrl.isNullOrBlank()) {
+                    load(anime!!.portadaUrl) {
+                        crossfade(true)
+                        memoryCachePolicy(CachePolicy.ENABLED)
+                        diskCachePolicy(CachePolicy.ENABLED)
+                        precision(Precision.INEXACT)
+                        scale(Scale.FILL)
+                    }
+                }
+            }
+            marco.addView(portada, FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
+            ))
+            tarjetaHistorial.addView(marco, LinearLayout.LayoutParams(dp(112), dp(142)))
+            tarjetaHistorial.addView(texto(
+                anime?.titulo ?: item.optString("titulo").ifBlank { "Anime" }, 11f, true
+            ).apply {
+                setTextColor(Color.WHITE)
+                maxLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setPadding(dp(7), dp(7), dp(7), 0)
+            }, LinearLayout.LayoutParams(dp(112), dp(42)))
+            tarjetaHistorial.addView(texto("EPISODIO $episodio", 9f, false).apply {
+                setTextColor(Color.rgb(190, 170, 215))
+                setPadding(dp(7), dp(2), dp(7), dp(5))
+            })
+            val clave = "anime_progreso_${token}_${episodio}"
+            val posicion = preferencias.getLong(clave, 0L)
+            val duracion = preferencias.getLong("${clave}_duracion", 0L)
+            if (posicion > 0L && duracion > 0L) {
+                val porcentaje = ((posicion * 100L) / duracion).toInt().coerceIn(0, 100)
+                tarjetaHistorial.addView(ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+                    max = 100
+                    progress = porcentaje
+                    progressTintList = android.content.res.ColorStateList.valueOf(acento)
+                    progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(67, 57, 79))
+                }, LinearLayout.LayoutParams(dp(98), dp(4)).apply {
+                    setMargins(dp(7), 0, dp(7), dp(7))
+                })
+            }
+            fila.addView(tarjetaHistorial, LinearLayout.LayoutParams(
+                dp(112), LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { marginEnd = dp(10) })
+        }
+        scroll.addView(fila)
+        contenido.addView(scroll)
+        espacio(16)
+    }
+
     private fun mostrarCatalogoFiltrado() {
         if (lectorActivo || !::contenido.isInitialized) return
 
@@ -1700,6 +1794,7 @@ class MainActivity : Activity() {
                     .orEmpty()
             }.getOrDefault("")
             if (ultimoTokenAnime.isNotBlank() && ultimoNumeroAnime > 0) {
+                agregarCarruselHistorialAnime(ultimoTokenAnime, ultimoNumeroAnime)
                 tituloSeccion("Seguí mirando")
                 val continuar = LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
