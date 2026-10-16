@@ -15,6 +15,7 @@ import coil.load
 import coil.request.CachePolicy
 import coil.size.Precision
 import coil.size.Scale
+import org.json.JSONArray
 
 class AnimeDetailScreen(
     context: Context,
@@ -178,6 +179,11 @@ class AnimeDetailScreen(
         if (detalle.episodios.isEmpty()) {
             contenido.addView(TextView(context).apply { text = "No hay episodios listados para este anime."; textSize = 14f; setTextColor(colorSecundario) })
         } else {
+            val claveVistos = "anime_episodios_vistos_${anime.token}"
+            val vistos = runCatching {
+                val guardados = JSONArray(context.getSharedPreferences("shademanga_lectura", Context.MODE_PRIVATE).getString(claveVistos, "[]").orEmpty())
+                (0 until guardados.length()).mapNotNull { guardados.optInt(it).takeIf { numero -> numero > 0 } }.toMutableSet()
+            }.getOrElse { mutableSetOf() }
             detalle.episodios.forEach { episodio ->
                 val fila = LinearLayout(context).apply {
                     orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; background = fondo(colorTarjeta, 10)
@@ -188,7 +194,29 @@ class AnimeDetailScreen(
                 texto.addView(TextView(context).apply { text = episodio.titulo.ifBlank { "Episodio " + episodio.numero }; textSize = 14f; setTypeface(null, Typeface.BOLD); setTextColor(colorTexto) })
                 if (episodio.fechaEmision.isNotBlank()) texto.addView(TextView(context).apply { text = episodio.fechaEmision; textSize = 11f; setTextColor(colorSecundario); setPadding(0, dp(3), 0, 0) })
                 fila.addView(texto, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
-                fila.addView(TextView(context).apply { text = "▶"; textSize = 18f; setTextColor(colorAcento); gravity = Gravity.CENTER })
+                fila.addView(TextView(context).apply { text = "▶"; textSize = 18f; setTextColor(colorAcento); gravity = Gravity.CENTER; setPadding(dp(6), 0, dp(6), 0) })
+                val botonVisto = TextView(context).apply {
+                    text = if (vistos.contains(episodio.numero)) "✓ VISTO" else "○ VISTO"
+                    textSize = 10f
+                    setTypeface(null, Typeface.BOLD)
+                    setTextColor(if (vistos.contains(episodio.numero)) Color.rgb(120, 230, 170) else colorSecundario)
+                    gravity = Gravity.CENTER
+                    setPadding(dp(7), dp(8), dp(7), dp(8))
+                    isClickable = true
+                    isFocusable = true
+                    contentDescription = if (vistos.contains(episodio.numero)) "Marcar episodio ${episodio.numero} como no visto" else "Marcar episodio ${episodio.numero} como visto"
+                    setOnClickListener {
+                        if (!vistos.add(episodio.numero)) vistos.remove(episodio.numero)
+                        val array = JSONArray()
+                        vistos.sorted().forEach { array.put(it) }
+                        context.getSharedPreferences("shademanga_lectura", Context.MODE_PRIVATE)
+                            .edit().putString(claveVistos, array.toString()).apply()
+                        text = if (vistos.contains(episodio.numero)) "✓ VISTO" else "○ VISTO"
+                        setTextColor(if (vistos.contains(episodio.numero)) Color.rgb(120, 230, 170) else colorSecundario)
+                        contentDescription = if (vistos.contains(episodio.numero)) "Marcar episodio ${episodio.numero} como no visto" else "Marcar episodio ${episodio.numero} como visto"
+                    }
+                }
+                fila.addView(botonVisto)
                 contenido.addView(fila, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(7) })
             }
         }
