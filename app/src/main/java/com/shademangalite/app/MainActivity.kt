@@ -31,6 +31,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.max
 import kotlin.math.min
@@ -88,7 +91,9 @@ class MainActivity : Activity() {
     // Dos tareas simultáneas evitan que una carga lenta del catálogo bloquee al lector o al anime.
     private val ejecutor = Executors.newFixedThreadPool(2)
     // Las búsquedas tienen su propio hilo para no esperar a la carga del catálogo o del lector.
-    private val ejecutorBusqueda = Executors.newFixedThreadPool(2)
+    private val ejecutorBusqueda = ThreadPoolExecutor(
+        2, 2, 0L, TimeUnit.MILLISECONDS, LinkedBlockingQueue<Runnable>()
+    )
     private var tareaBusquedaActual: Future<*>? = null
 
     private val preferencias by lazy {
