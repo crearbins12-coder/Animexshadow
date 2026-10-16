@@ -41,7 +41,7 @@ class MainActivity : Activity() {
     private val apiBase = "https://shademanga.com"
     private val mangaApi = MangaApi(apiBase = apiBase)
     private val animeApi by lazy { AnimeApi(apiBase = apiBase) }
-    private val tamanoPaginaCatalogo = 100
+    private val tamanoPaginaCatalogo = 48
 
     private val fondo = ShadeTheme.fondo
     private val tarjeta = ShadeTheme.tarjeta
@@ -67,6 +67,7 @@ class MainActivity : Activity() {
     private val manejadorBusquedaManga = Handler(Looper.getMainLooper())
     private var busquedaMangaPendiente: Runnable? = null
     private val cacheBusquedaManga = ConcurrentHashMap<String, List<Serie>>()
+    private val maxEntradasCacheBusqueda = 40
     private var mostrandoTodos = false
     private var resultadosVisibles = 21
 
@@ -84,7 +85,8 @@ class MainActivity : Activity() {
     private var restaurarPosicionCatalogo = false
 
     private val idsCatalogo = mutableSetOf<String>()
-    private val ejecutor = Executors.newSingleThreadExecutor()
+    // Dos tareas simultáneas evitan que una carga lenta del catálogo bloquee al lector o al anime.
+    private val ejecutor = Executors.newFixedThreadPool(2)
     // Las búsquedas tienen su propio hilo para no esperar a la carga del catálogo o del lector.
     private val ejecutorBusqueda = Executors.newFixedThreadPool(2)
     private var tareaBusquedaActual: Future<*>? = null
@@ -1386,7 +1388,15 @@ class MainActivity : Activity() {
                 analizarSeries(respuestaBusqueda)
                     .filter(::coincide)
                     .forEach { encontrados[it.id] = it }
-                cacheBusquedaManga[consulta.lowercase()] = encontrados.values.toList()
+                val claveCacheBusqueda = consulta.lowercase()
+                cacheBusquedaManga[claveCacheBusqueda] = encontrados.values.toList()
+                // Limitar la caché evita acumular resultados indefinidamente durante sesiones largas.
+                while (cacheBusquedaManga.size > maxEntradasCacheBusqueda) {
+                    val claveParaEliminar = cacheBusquedaManga.keys
+                        .firstOrNull { it != claveCacheBusqueda }
+                        ?: break
+                    cacheBusquedaManga.remove(claveParaEliminar)
+                }
 
                 runOnUiThread {
                     if (isFinishing || isDestroyed || generacion != generacionCatalogo ||
