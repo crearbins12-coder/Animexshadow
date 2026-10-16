@@ -853,7 +853,26 @@ class MainActivity : Activity() {
         idsCatalogo.clear()
         catalogo.clear()
 
-        mostrarPantallaCarga("Cargando mangas...")
+        // Mostrar primero la última página inicial guardada; luego actualizar desde la API.
+        val catalogoGuardado = preferencias.getString("catalogo_inicial_cache", "").orEmpty()
+        if (catalogoGuardado.isNotBlank()) {
+            runCatching {
+                val arrayGuardado = JSONArray(catalogoGuardado)
+                val resultadoGuardado = analizarSeries(arrayGuardado)
+                if (resultadoGuardado.isNotEmpty()) {
+                    catalogo = resultadoGuardado.toMutableList()
+                    idsCatalogo.addAll(resultadoGuardado.map { it.id })
+                    mangasVisiblesPorCategoria.clear()
+                    mostrarCatalogoFiltrado()
+                } else {
+                    mostrarPantallaCarga("Cargando mangas...")
+                }
+            }.onFailure {
+                mostrarPantallaCarga("Cargando mangas...")
+            }
+        } else {
+            mostrarPantallaCarga("Cargando mangas...")
+        }
 
         ejecutor.execute {
             try {
@@ -864,6 +883,13 @@ class MainActivity : Activity() {
                 val array = JSONArray(respuesta)
                 val cantidadOriginal = array.length()
                 val resultado = analizarSeries(array)
+
+                // Guardar solo respuestas razonables para evitar una preferencia excesiva.
+                if (respuesta.length <= 500_000 && resultado.isNotEmpty()) {
+                    preferencias.edit()
+                        .putString("catalogo_inicial_cache", respuesta)
+                        .apply()
+                }
 
                 runOnUiThread {
                     if (
@@ -896,11 +922,14 @@ class MainActivity : Activity() {
 
                     cargandoMasCatalogo = false
 
-                    mostrarError(
-                        "No se pudo cargar el catálogo.\n\n" +
-                            "${e.javaClass.simpleName}: " +
-                            (e.message ?: "Error desconocido")
-                    )
+                    // Si ya mostramos datos guardados, mantenerlos y permitir navegar.
+                    if (catalogo.isEmpty()) {
+                        mostrarError(
+                            "No se pudo cargar el catálogo.\n\n" +
+                                "${e.javaClass.simpleName}: " +
+                                (e.message ?: "Error desconocido")
+                        )
+                    }
                 }
             }
         }
