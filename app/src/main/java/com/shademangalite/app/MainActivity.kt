@@ -2600,14 +2600,23 @@ class MainActivity : Activity() {
             contentDescription = "Resumen de tu biblioteca"
         }
         raizPerfil.addView(resumenPerfil)
-        val categorias = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val filaCategorias = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val categorias = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            isFillViewport = true
+            clipToPadding = false
+            addView(filaCategorias, HorizontalScrollView.LayoutParams(
+                HorizontalScrollView.LayoutParams.WRAP_CONTENT,
+                HorizontalScrollView.LayoutParams.WRAP_CONTENT
+            ))
+        }
         raizPerfil.addView(categorias)
         val scroll = ScrollView(this).apply { isFillViewport = true; clipToPadding = false }
         val lista = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(12), 0, dp(16)) }
         scroll.addView(lista)
         raizPerfil.addView(scroll, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         fun renderizar(categoria: String) {
-            categorias.removeAllViews()
+            filaCategorias.removeAllViews()
             lista.removeAllViews()
             // Contadores por categoría: permiten ver de un vistazo cómo está organizada la biblioteca.
             val cantidadesPerfil = listOf("Me gusta", "Viendo", "Ver más tarde").associateWith { cat ->
@@ -2630,7 +2639,9 @@ class MainActivity : Activity() {
                     isClickable = true; isFocusable = true
                     setOnClickListener { renderizar(cat) }
                 }
-                categorias.addView(boton, LinearLayout.LayoutParams(0, dp(44), 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
+                filaCategorias.addView(boton, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(44)).apply {
+                    setMargins(dp(3), 0, dp(3), 0)
+                })
             }
             val mangas = obtenerMangasEstado(categoria)
             val animes = obtenerAnimesEstado(categoria)
