@@ -1111,7 +1111,9 @@ class MainActivity : Activity() {
             val numero: Int,
             val estado: String,
             val porcentaje: Int,
-            val fecha: Long
+            val fecha: Long,
+            val posicionMs: Long,
+            val duracionMs: Long
         )
 
         val historial = runCatching {
@@ -1145,7 +1147,9 @@ class MainActivity : Activity() {
                     episodio,
                     estado,
                     if (estado == "TERMINADO") 100 else porcentaje,
-                    item.optLong("fecha", 0L)
+                    item.optLong("fecha", 0L),
+                    posicion,
+                    duracion
                 )
             }
         }.distinctBy { "${it.token}_${it.numero}" }
@@ -1340,6 +1344,18 @@ class MainActivity : Activity() {
                     textSize = 11f
                     setTextColor(if (principal.estado == "EN CURSO") acento else textoSecundario)
                 })
+                if (principal.estado == "EN CURSO" && principal.duracionMs > 0L) {
+                    fun reloj(ms: Long): String {
+                        val segundos = (ms.coerceAtLeast(0L) / 1000L)
+                        return "%d:%02d".format(segundos / 60L, segundos % 60L)
+                    }
+                    datos.addView(TextView(this).apply {
+                        text = "Visto: " + reloj(principal.posicionMs) + " / " + reloj(principal.duracionMs)
+                        textSize = 10f
+                        setTextColor(textoSecundario)
+                        setPadding(0, dp(3), 0, 0)
+                    })
+                }
                 if (principal.estado == "EN CURSO") {
                     val barra = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
                         max = 100
