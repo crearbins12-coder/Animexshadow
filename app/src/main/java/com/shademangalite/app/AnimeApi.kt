@@ -375,6 +375,9 @@ class AnimeApi(
             "Número de episodio no válido"
         }
 
+        val claveCache = "episodio|$token|$numero|$excluirAdultos"
+        leerCache<AnimeEpisodioDetalle>(claveCache)?.let { return it }
+
         val respuesta = consultar(
             "/api/anime/$token/$numero"
         )
@@ -429,7 +432,7 @@ class AnimeApi(
             )
         }
 
-        return AnimeEpisodioDetalle(
+        val resultado = AnimeEpisodioDetalle(
             animeToken = obtenerTexto(serie, "token"),
             numero = respuesta.optInt("numero", numero),
             episodioId = respuesta.optInt("episodioId", 0),
@@ -439,6 +442,8 @@ class AnimeApi(
             ),
             embeds = embeds
         )
+        guardarCache(claveCache, resultado)
+        return resultado
     }
 
     fun obtenerServidores(): List<String> {
