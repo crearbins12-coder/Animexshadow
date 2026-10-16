@@ -5,6 +5,38 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
+/**
+ * Permite cancelar una petición HTTP activa al cambiar de búsqueda.
+ * Future.cancel(true) por sí solo no siempre interrumpe una lectura de HttpURLConnection.
+ */
+class ControlConsulta {
+    @Volatile private var cancelada = false
+    @Volatile private var conexionActiva: HttpURLConnection? = null
+
+    fun cancelar() {
+        cancelada = true
+        conexionActiva?.disconnect()
+    }
+
+    fun estaCancelada(): Boolean =
+        cancelada || Thread.currentThread().isInterrupted
+
+    internal fun registrar(conexion: HttpURLConnection) {
+        conexionActiva = conexion
+        if (cancelada || Thread.currentThread().isInterrupted) {
+            conexion.disconnect()
+        }
+    }
+
+    internal fun liberar(conexion: HttpURLConnection) {
+        if (conexionActiva === conexion) conexionActiva = null
+    }
+
+    fun comprobar() {
+        if (estaCancelada()) throw InterruptedException("Consulta cancelada")
+    }
+}
+
 class MangaApi(
     private val apiBase: String = "https://shademanga.com",
     private val tiempoConexion: Int = 15000,
@@ -19,7 +51,11 @@ class MangaApi(
         return JSONArray(consultarTexto(ruta))
     }
 
-    fun consultarTexto(ruta: String): String {
+    fun consultarTexto(
+        ruta: String,
+        control: ControlConsulta? = null
+    ): String {
+        control?.comprobar()
         require(ruta.startsWith("/") && !ruta.startsWith("//")) {
             "La ruta debe comenzar con /"
         }
@@ -48,6 +84,8 @@ class MangaApi(
         val conexion = url.openConnection() as HttpURLConnection
 
         try {
+            control?.registrar(conexion)
+            control?.comprobar()
             conexion.requestMethod = "GET"
             conexion.connectTimeout = tiempoConexion
             conexion.readTimeout = tiempoLectura
@@ -60,6 +98,7 @@ class MangaApi(
             )
 
             val codigo = conexion.responseCode
+            control?.comprobar()
 
             if (codigo in 300..399) {
                 throw IllegalStateException(
@@ -79,6 +118,7 @@ class MangaApi(
             val cuerpo = flujo.bufferedReader(Charsets.UTF_8).use {
                 it.readText()
             }
+            control?.comprobar()
 
             if (codigo !in 200..299) {
                 throw IllegalStateException(
@@ -88,6 +128,7 @@ class MangaApi(
 
             return cuerpo
         } finally {
+            control?.liberar(conexion)
             conexion.disconnect()
         }
     }
