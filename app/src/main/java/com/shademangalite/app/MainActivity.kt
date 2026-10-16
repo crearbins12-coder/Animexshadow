@@ -1232,8 +1232,10 @@ class MainActivity : Activity() {
                 return
             }
 
-            filtrados.forEach { episodio ->
-                val tarjetaEpisodio = LinearLayout(this).apply {
+            val grupos = filtrados.groupBy { it.token }
+            grupos.forEach { (_, episodiosSerie) ->
+                val principal = episodiosSerie.firstOrNull { it.estado == "EN CURSO" } ?: episodiosSerie.first()
+                val tarjetaSerie = LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
                     setPadding(dp(9), dp(9), dp(9), dp(9))
@@ -1241,64 +1243,80 @@ class MainActivity : Activity() {
                     isClickable = true
                     isFocusable = true
                     setOnClickListener {
-                        dialogo.dismiss()
-                        reproducirEpisodioGuardado(episodio.token, episodio.numero)
+                        val opcionesEpisodios = episodiosSerie.map { episodio ->
+                            val estado = when (episodio.estado) {
+                                "EN CURSO" -> "▶ En curso · ${episodio.porcentaje}%"
+                                "TERMINADO" -> "✓ Terminado"
+                                else -> "◷ Pendiente"
+                            }
+                            "Episodio ${episodio.numero} · $estado"
+                        }.toTypedArray()
+                        AlertDialog.Builder(this@MainActivity)
+                            .setTitle(principal.titulo)
+                            .setItems(opcionesEpisodios) { _, indice ->
+                                episodiosSerie.getOrNull(indice)?.let { seleccionado ->
+                                    dialogo.dismiss()
+                                    reproducirEpisodioGuardado(seleccionado.token, seleccionado.numero)
+                                }
+                            }
+                            .setNegativeButton("Volver", null)
+                            .show()
                     }
                 }
                 val portada = ImageView(this).apply {
                     scaleType = ImageView.ScaleType.CENTER_CROP
                     background = crearFondo(Color.rgb(38, 32, 48), 9)
                     clipToOutline = true
-                    val anime = animesConocidos.firstOrNull { it.token == episodio.token }
+                    val anime = animesConocidos.firstOrNull { it.token == principal.token }
                     if (!anime?.portadaUrl.isNullOrBlank()) load(anime?.portadaUrl)
                 }
-                tarjetaEpisodio.addView(portada, LinearLayout.LayoutParams(dp(76), dp(100)))
+                tarjetaSerie.addView(portada, LinearLayout.LayoutParams(dp(76), dp(100)))
                 val datos = LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL
                     setPadding(dp(11), dp(2), dp(3), dp(2))
                 }
                 datos.addView(TextView(this).apply {
-                    text = episodio.titulo
+                    text = principal.titulo
                     textSize = 14f
                     setTypeface(typeface, Typeface.BOLD)
                     setTextColor(textoColor)
                     maxLines = 2
                 })
                 datos.addView(TextView(this).apply {
-                    text = "Episodio ${episodio.numero}"
+                    text = "${episodiosSerie.size} episodio${if (episodiosSerie.size == 1) "" else "s"} guardado${if (episodiosSerie.size == 1) "" else "s"}"
                     textSize = 12f
                     setTextColor(textoSecundario)
                     setPadding(0, dp(4), 0, dp(3))
                 })
-                val estadoTexto = when (episodio.estado) {
-                    "EN CURSO" -> "▶ EN CURSO · ${episodio.porcentaje}%"
-                    "TERMINADO" -> "✓ TERMINADO"
-                    else -> "◷ PENDIENTE"
+                val estadoTexto = when (principal.estado) {
+                    "EN CURSO" -> "▶ Ep. ${principal.numero} · EN CURSO · ${principal.porcentaje}%"
+                    "TERMINADO" -> "✓ Último episodio terminado"
+                    else -> "◷ Ep. ${principal.numero} · PENDIENTE"
                 }
                 datos.addView(TextView(this).apply {
                     text = estadoTexto
                     textSize = 11f
-                    setTextColor(if (episodio.estado == "EN CURSO") acento else textoSecundario)
+                    setTextColor(if (principal.estado == "EN CURSO") acento else textoSecundario)
                 })
-                if (episodio.estado == "EN CURSO") {
+                if (principal.estado == "EN CURSO") {
                     val barra = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
                         max = 100
-                        progress = episodio.porcentaje
+                        progress = principal.porcentaje
                     }
                     datos.addView(barra, LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT, dp(5)
                     ).apply { topMargin = dp(8) })
                 }
                 datos.addView(TextView(this).apply {
-                    text = if (episodio.estado == "TERMINADO") "Reproducir de nuevo  ↗" else "Continuar episodio  ▶"
+                    text = "Ver episodios  ›"
                     textSize = 11f
                     setTextColor(Color.WHITE)
                     setPadding(0, dp(7), 0, 0)
                 })
-                tarjetaEpisodio.addView(datos, LinearLayout.LayoutParams(
+                tarjetaSerie.addView(datos, LinearLayout.LayoutParams(
                     0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
                 ))
-                lista.addView(tarjetaEpisodio, LinearLayout.LayoutParams(
+                lista.addView(tarjetaSerie, LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
                 ).apply { bottomMargin = dp(9) })
             }
