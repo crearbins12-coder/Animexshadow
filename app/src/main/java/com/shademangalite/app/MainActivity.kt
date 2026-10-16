@@ -1906,7 +1906,20 @@ class MainActivity : Activity() {
             return
         }
 
-        mostrarPantallaCarga("Cargando páginas...")
+        // Al navegar desde otro capítulo, el lector anterior ya no debe quedar
+        // visible ni aceptar toques mientras llega la lista de páginas nueva.
+        val pantallaCargaLector = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setBackgroundColor(Color.BLACK)
+            addView(
+                texto("Cargando páginas...", 17f, false).apply {
+                    gravity = Gravity.CENTER
+                    setPadding(dp(20), dp(24), dp(20), dp(24))
+                }
+            )
+        }
+        setContentView(pantallaCargaLector)
 
         ejecutor.execute {
             try {
