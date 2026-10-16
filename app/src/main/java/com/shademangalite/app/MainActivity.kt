@@ -2538,13 +2538,25 @@ class MainActivity : Activity() {
 
     private fun migrarFavoritosAlPerfil() {
         if (preferencias.getBoolean("perfil_migrado_favoritos", false)) return
-        // Los favoritos anteriores se convierten en «Me gusta» para no perder la biblioteca.
+
+        // No marcar la migración como terminada si aún no podemos recuperar algún manga.
+        // Así se podrá reintentar cuando el catálogo o la caché local estén disponibles.
+        var quedanFavoritosPendientes = false
         favoritos.toList().forEach { id ->
             val serie = catalogo.firstOrNull { it.id == id } ?: seriesGuardadas[id]
-            if (serie != null) guardarEstadoManga(serie, "Me gusta")
+            if (serie != null) {
+                guardarEstadoManga(serie, "Me gusta")
+            } else {
+                quedanFavoritosPendientes = true
+            }
         }
+
+        // Los datos de favoritos de anime ya están almacenados localmente.
         obtenerAnimesFavoritos().forEach { guardarEstadoAnime(it, "Me gusta") }
-        preferencias.edit().putBoolean("perfil_migrado_favoritos", true).apply()
+
+        if (!quedanFavoritosPendientes) {
+            preferencias.edit().putBoolean("perfil_migrado_favoritos", true).apply()
+        }
     }
 
     private fun mostrarPerfil(categoriaInicial: String = "Me gusta") {
