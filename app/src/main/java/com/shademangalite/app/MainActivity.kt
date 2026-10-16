@@ -97,6 +97,7 @@ class MainActivity : Activity() {
         2, 2, 0L, TimeUnit.MILLISECONDS, LinkedBlockingQueue<Runnable>()
     )
     private var tareaBusquedaActual: Future<*>? = null
+    private var controlBusquedaActual: ControlConsulta? = null
 
     private val preferencias by lazy {
         getSharedPreferences("shademanga_lectura", MODE_PRIVATE)
@@ -161,6 +162,8 @@ class MainActivity : Activity() {
         generacionCatalogo++
         generacionAnime++
         ejecutor.shutdownNow()
+        controlBusquedaActual?.cancelar()
+        controlBusquedaActual = null
         tareaBusquedaActual?.cancel(true)
         ejecutorBusqueda.shutdownNow()
         restaurarPantallaCompleta(false)
@@ -1371,6 +1374,8 @@ class MainActivity : Activity() {
         val generacion = generacionCatalogo
         // Cancelar y retirar búsquedas anteriores que todavía estén en cola.
         // Así una consulta vieja no retrasa la consulta más reciente.
+        controlBusquedaActual?.cancelar()
+        controlBusquedaActual = null
         tareaBusquedaActual?.cancel(true)
         ejecutorBusqueda.purge()
         tareaBusquedaActual = null
@@ -1390,8 +1395,11 @@ class MainActivity : Activity() {
             return
         }
 
+        val control = ControlConsulta()
+        controlBusquedaActual = control
         tareaBusquedaActual = ejecutorBusqueda.submit {
             try {
+                control.comprobar()
                 fun coincide(serie: Serie): Boolean =
                     serie.titulo.contains(consulta, ignoreCase = true) ||
                         serie.autor.contains(consulta, ignoreCase = true) ||
@@ -1403,7 +1411,8 @@ class MainActivity : Activity() {
                     "/api/series-locales/search-candidates" +
                         "?q=${Uri.encode(consulta)}" +
                         "&includeAdult=false&showSinPortada=false&take=120"
-                val respuestaBusqueda = JSONArray(consultarApi(rutaBusqueda))
+                val respuestaBusqueda = JSONArray(consultarApi(rutaBusqueda, control))
+                control.comprobar()
                 val encontrados = linkedMapOf<String, Serie>()
                 analizarSeries(respuestaBusqueda)
                     .filter(::coincide)
@@ -1419,8 +1428,13 @@ class MainActivity : Activity() {
                 }
 
                 runOnUiThread {
-                    if (isFinishing || isDestroyed || generacion != generacionCatalogo ||
-                        consulta != filtroActual.trim() || mostrandoAnime || mostrandoDetalleAnime
+                    if (controlBusquedaActual === control) {
+                        controlBusquedaActual = null
+                        tareaBusquedaActual = null
+                    }
+                    if (control.estaCancelada() || isFinishing || isDestroyed ||
+                        generacion != generacionCatalogo || consulta != filtroActual.trim() ||
+                        mostrandoAnime || mostrandoDetalleAnime
                     ) return@runOnUiThread
 
                     encontrados.values.forEach { serie ->
@@ -1435,8 +1449,13 @@ class MainActivity : Activity() {
                 }
             } catch (e: Exception) {
                 runOnUiThread {
-                    if (isFinishing || isDestroyed || generacion != generacionCatalogo ||
-                        consulta != filtroActual.trim()
+                    if (controlBusquedaActual === control) {
+                        controlBusquedaActual = null
+                        tareaBusquedaActual = null
+                    }
+                    if (control.estaCancelada() || isFinishing || isDestroyed ||
+                        generacion != generacionCatalogo || consulta != filtroActual.trim() ||
+                        mostrandoAnime || mostrandoDetalleAnime
                     ) return@runOnUiThread
                     mostrarAviso("No se pudo completar la búsqueda. ${e.message ?: "Error desconocido"}")
                 }
@@ -2281,6 +2300,10 @@ class MainActivity : Activity() {
 
     private fun consultarApi(ruta: String): String {
         return mangaApi.consultarTexto(ruta)
+    }
+
+    private fun consultarApi(ruta: String, control: ControlConsulta): String {
+        return mangaApi.consultarTexto(ruta, control)
     }
 
     private fun obtenerGeneros(valor: Any?): String {
