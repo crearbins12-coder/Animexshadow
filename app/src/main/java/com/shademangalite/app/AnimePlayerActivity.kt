@@ -12,6 +12,7 @@ import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 
@@ -60,8 +61,15 @@ class AnimePlayerActivity : Activity() {
         val dataSourceFactory = DefaultDataSource.Factory(this, httpFactory)
         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
 
+        // Un poco más de búfer ayuda a disimular bajadas breves de velocidad.
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(20_000, 60_000, 2_500, 5_000)
+            .setPrioritizeTimeOverSizeThresholds(true)
+            .build()
+
         val exo = ExoPlayer.Builder(this)
             .setMediaSourceFactory(mediaSourceFactory)
+            .setLoadControl(loadControl)
             .build()
         player = exo
         vista.player = exo
