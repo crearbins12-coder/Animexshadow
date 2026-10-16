@@ -2033,19 +2033,25 @@ class MainActivity : Activity() {
         val columna = contenedorLector ?: return
         val scroll = scrollLector ?: return
 
-        if (columna.childCount == 0) return
+        val cantidad = columna.childCount
+        if (cantidad == 0) return
 
+        // Los hijos ya están ordenados verticalmente; la búsqueda binaria evita
+        // recorrer todas las páginas en cada evento de desplazamiento.
         val objetivo = scroll.scrollY + scroll.height / 3
-        var acumulado = 0
-        var indiceVisible = 0
+        var izquierda = 0
+        var derecha = cantidad - 1
+        var indiceVisible = derecha
 
-        for (i in 0 until columna.childCount) {
-            val hijo = columna.getChildAt(i)
-            acumulado += hijo.height
+        while (izquierda <= derecha) {
+            val medio = (izquierda + derecha) ushr 1
+            val hijo = columna.getChildAt(medio)
 
-            if (acumulado >= objetivo) {
-                indiceVisible = i
-                break
+            if (hijo.bottom < objetivo) {
+                izquierda = medio + 1
+            } else {
+                indiceVisible = medio
+                derecha = medio - 1
             }
         }
 
