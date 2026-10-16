@@ -68,6 +68,8 @@ class MainActivity : Activity() {
 
     private var filtroActual = ""
     private val manejadorBusquedaManga = Handler(Looper.getMainLooper())
+    private val manejadorProgreso = Handler(Looper.getMainLooper())
+    private var tareaGuardarProgreso: Runnable? = null
     private var busquedaMangaPendiente: Runnable? = null
     private val cacheBusquedaManga = ConcurrentHashMap<String, List<Serie>>()
     private val maxEntradasCacheBusqueda = 40
@@ -153,6 +155,9 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        tareaGuardarProgreso?.let(manejadorProgreso::removeCallbacks)
+        tareaGuardarProgreso = null
+        if (lectorActivo) guardarProgreso()
         generacionCatalogo++
         generacionAnime++
         ejecutor.shutdownNow()
@@ -284,6 +289,16 @@ class MainActivity : Activity() {
         capitulo: Capitulo
     ): String {
         return "scroll_${serie.id}_${capitulo.id}"
+    }
+
+    private fun programarGuardarProgreso() {
+        tareaGuardarProgreso?.let(manejadorProgreso::removeCallbacks)
+        val tarea = Runnable {
+            tareaGuardarProgreso = null
+            guardarProgreso()
+        }
+        tareaGuardarProgreso = tarea
+        manejadorProgreso.postDelayed(tarea, 300L)
     }
 
     private fun guardarProgreso() {
@@ -1895,7 +1910,8 @@ class MainActivity : Activity() {
                 }
 
                 actualizarPaginaVisible()
-                guardarProgreso()
+                // Evita escribir en SharedPreferences en cada evento de scroll.
+                programarGuardarProgreso()
                 actualizarTextoProgreso(paginas.size)
             }
         }.apply {
