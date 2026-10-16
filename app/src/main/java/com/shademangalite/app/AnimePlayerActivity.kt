@@ -2,9 +2,14 @@ package com.shademangalite.app
 
 import android.app.Activity
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.graphics.Color
+import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.Toast
+import android.widget.TextView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
@@ -12,6 +17,7 @@ import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -28,6 +34,11 @@ class AnimePlayerActivity : Activity() {
 
     private var player: ExoPlayer? = null
     private var playerView: PlayerView? = null
+    private val diagnosticoHandler = Handler(Looper.getMainLooper())
+    private var fotogramasPerdidos = 0
+    private var ultimoReportePerdidos = 0
+    private var textoDiagnostico: TextView? = null
+    private var tareaDiagnostico: Runnable? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,10 +61,27 @@ class AnimePlayerActivity : Activity() {
             keepScreenOn = true
         }
         playerView = vista
-        setContentView(vista, ViewGroup.LayoutParams(
+
+        // Panel temporal de diagnóstico para detectar saltos sin copiar el enlace.
+        val contenedor = FrameLayout(this)
+        contenedor.addView(vista, FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         ))
+        val diagnostico = TextView(this).apply {
+            setTextColor(Color.WHITE)
+            setBackgroundColor(0x99000000.toInt())
+            textSize = 12f
+            setPadding(12, 8, 12, 8)
+            text = "Diagnóstico: preparando video…"
+        }
+        textoDiagnostico = diagnostico
+        contenedor.addView(diagnostico, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            Gravity.TOP or Gravity.START
+        ))
+        setContentView(contenedor)
 
         val httpFactory = DefaultHttpDataSource.Factory()
             .setUserAgent("ShadeMangaLite/1.0")
@@ -80,6 +108,31 @@ class AnimePlayerActivity : Activity() {
         player = exo
         vista.player = exo
 
+        exo.addAnalyticsListener(object : AnalyticsListener {
+            override fun onDroppedVideoFrames(
+                eventTime: AnalyticsListener.EventTime,
+                droppedFrames: Int,
+                elapsedMs: Long
+            ) {
+                fotogramasPerdidos += droppedFrames
+            }
+        })
+
+        val actualizarDiagnostico = object : Runnable {
+            override fun run() {
+                val actual = player
+                val etiqueta = textoDiagnostico
+                if (actual == null || etiqueta == null || isFinishing || isDestroyed) return
+                val nuevosPerdidos = fotogramasPerdidos - ultimoReportePerdidos
+                ultimoReportePerdidos = fotogramasPerdidos
+                etiqueta.text = "Diagnóstico · Perdidos: $fotogramasPerdidos (+$nuevosPerdidos) · " +
+                    "Búfer: ${((actual.bufferedPosition - actual.currentPosition).coerceAtLeast(0) / 1000)} s"
+                diagnosticoHandler.postDelayed(this, 2000)
+            }
+        }
+        tareaDiagnostico = actualizarDiagnostico
+        diagnosticoHandler.postDelayed(actualizarDiagnostico, 2000)
+
         exo.addListener(object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
                 Toast.makeText(
@@ -102,6 +155,9 @@ class AnimePlayerActivity : Activity() {
     }
 
     override fun onStop() {
+        tareaDiagnostico?.let { diagnosticoHandler.removeCallbacks(it) }
+        tareaDiagnostico = null
+        textoDiagnostico = null
         playerView?.player = null
         player?.release()
         player = null
