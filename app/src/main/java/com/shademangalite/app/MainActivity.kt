@@ -860,6 +860,28 @@ class MainActivity : Activity() {
             addView(botonMiLista, LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { setMargins(dp(16), dp(5), dp(16), dp(8)) })
+            val botonOrganizarPerfil = TextView(this@MainActivity).apply {
+                text = "＋  ORGANIZAR EN MI PERFIL"
+                textSize = 12f; typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.CENTER
+                setTextColor(textoColor); setPadding(dp(14), dp(11), dp(14), dp(11))
+                background = crearFondo(Color.rgb(32, 27, 44), 12)
+                isClickable = true; isFocusable = true
+                setOnClickListener {
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle("Guardar " + anime.titulo)
+                        .setItems(arrayOf("♥  Me gusta", "◉  Viendo", "◷  Ver más tarde", "Quitar del perfil")) { _, indice ->
+                            val categoria = when (indice) { 0 -> "Me gusta"; 1 -> "Viendo"; 2 -> "Ver más tarde"; else -> null }
+                            guardarEstadoAnime(anime, categoria)
+                            botonMiLista.text = if (categoria == "Me gusta") "♥  ME GUSTA" else "♡  ME GUSTA"
+                            Toast.makeText(this@MainActivity, if (categoria == null) "Quitado del perfil" else "Guardado en $categoria", Toast.LENGTH_SHORT).show()
+                        }
+                        .setNegativeButton("Cancelar", null)
+                        .show()
+                }
+            }
+            addView(botonOrganizarPerfil, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { setMargins(dp(16), 0, dp(16), dp(6)) })
             addView(NavigationBar(
                 context = this@MainActivity, acento = acento, textoSecundario = textoSecundario,
                 mostrandoTodos = false, mostrandoFavoritos = false, mostrandoHistorial = false,
