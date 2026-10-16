@@ -137,6 +137,60 @@ class MainActivity : Activity() {
     private var estadoAnime = ""
     private var listaAnimeActual = mutableListOf<Anime>()
     private var animesDestacadosInicio = mutableListOf<Anime>()
+    private fun obtenerAnimesFavoritos(): MutableList<Anime> {
+        val guardados = mutableListOf<Anime>()
+        runCatching {
+            val array = JSONArray(preferencias.getString("anime_favoritos_datos", "[]").orEmpty())
+            for (i in 0 until array.length()) {
+                val item = array.optJSONObject(i) ?: continue
+                val token = item.optString("token")
+                if (token.isBlank()) continue
+                guardados.add(
+                    Anime(
+                        token = token,
+                        slug = item.optString("slug"),
+                        titulo = item.optString("titulo", "Anime"),
+                        tipo = item.optString("tipo"),
+                        estado = item.optString("estado"),
+                        generos = item.optString("generos"),
+                        puntuacion = item.optDouble("puntuacion", 0.0),
+                        portadaUrl = item.optString("portadaUrl")
+                    )
+                )
+            }
+        }
+        return guardados.distinctBy { it.token }.toMutableList()
+    }
+
+    private fun esAnimeFavorito(anime: Anime): Boolean =
+        obtenerAnimesFavoritos().any { it.token == anime.token }
+
+    private fun alternarAnimeFavorito(anime: Anime): Boolean {
+        val lista = obtenerAnimesFavoritos()
+        val yaGuardado = lista.any { it.token == anime.token }
+        if (yaGuardado) {
+            lista.removeAll { it.token == anime.token }
+        } else {
+            lista.add(0, anime)
+        }
+        val array = JSONArray()
+        lista.forEach { item ->
+            array.put(
+                JSONObject()
+                    .put("token", item.token)
+                    .put("slug", item.slug)
+                    .put("titulo", item.titulo)
+                    .put("tipo", item.tipo)
+                    .put("estado", item.estado)
+                    .put("generos", item.generos)
+                    .put("puntuacion", item.puntuacion)
+                    .put("portadaUrl", item.portadaUrl)
+            )
+        }
+        preferencias.edit().putString("anime_favoritos_datos", array.toString()).apply()
+        return !yaGuardado
+    }
+
     private var generacionInicioAnime = 0
     private var cargandoMasAnime = false
 
@@ -702,6 +756,30 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { setMargins(dp(10), 0, dp(10), dp(6)) })
             addView(pantalla, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+            val botonMiLista = TextView(this@MainActivity).apply {
+                text = if (esAnimeFavorito(anime)) "★  EN MI LISTA" else "＋  AGREGAR A MI LISTA"
+                textSize = 13f
+                typeface = Typeface.DEFAULT_BOLD
+                gravity = Gravity.CENTER
+                setTextColor(Color.WHITE)
+                setPadding(dp(14), dp(12), dp(14), dp(12))
+                background = crearFondo(Color.rgb(45, 31, 63), 12)
+                isClickable = true
+                isFocusable = true
+                setOnClickListener {
+                    val guardado = alternarAnimeFavorito(anime)
+                    text = if (guardado) "★  EN MI LISTA" else "＋  AGREGAR A MI LISTA"
+                    Toast.makeText(
+                        this@MainActivity,
+                        if (guardado) "Agregado a Mi lista" else "Quitado de Mi lista",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+            addView(botonMiLista, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { setMargins(dp(16), dp(5), dp(16), dp(8) })
+            )
             addView(NavigationBar(
                 context = this@MainActivity,
                 acento = acento,
@@ -1625,6 +1703,13 @@ class MainActivity : Activity() {
                 contenido.addView(continuar, LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
                 ))
+                espacio(20)
+            }
+
+            val animesEnMiLista = obtenerAnimesFavoritos()
+            if (animesEnMiLista.isNotEmpty()) {
+                tituloSeccion("Mi lista de anime", "${animesEnMiLista.size} guardados")
+                agregarCarruselAnime(animesEnMiLista)
                 espacio(20)
             }
 
