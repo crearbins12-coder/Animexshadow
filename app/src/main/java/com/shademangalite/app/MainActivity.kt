@@ -1582,8 +1582,34 @@ class MainActivity : Activity() {
             espacio(20)
         }
 
-        // El orden recibido por el catálogo se conserva; no se inventan puntuaciones.
-        tituloSeccion("Mangas populares", "Ver todos  ›")
+        // Estante personalizado: retomar la última lectura guardada sin inventar progreso.
+        val idUltimaSerie = preferencias.getString("ultima_serie", "").orEmpty()
+        val serieParaContinuar = if (idUltimaSerie.isNotBlank()) {
+            catalogo.firstOrNull { it.id == idUltimaSerie }
+                ?: seriesGuardadas[idUltimaSerie]
+        } else null
+        if (serieParaContinuar != null) {
+            tituloSeccion("Seguí leyendo")
+            contenido.addView(crearTarjetaContinuar(serieParaContinuar),
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ))
+            espacio(20)
+        }
+
+        // Estante de favoritos personal, disponible desde el inicio.
+        val seriesFavoritas = favoritos.mapNotNull { id ->
+            catalogo.firstOrNull { it.id == id } ?: seriesGuardadas[id]
+        }.distinctBy { it.id }
+        if (seriesFavoritas.isNotEmpty()) {
+            tituloSeccion("Mi lista", "Ver todos  ›")
+            agregarCarrusel(seriesFavoritas)
+            espacio(20)
+        }
+
+        // El orden de la API se conserva; no afirmamos popularidad ni inventamos rankings.
+        tituloSeccion("Mangas para descubrir", "Ver todos  ›")
         agregarCarrusel(lista.take(15))
         espacio(20)
 
