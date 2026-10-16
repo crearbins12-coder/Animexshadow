@@ -751,7 +751,7 @@ class MainActivity : Activity() {
                 onAnime = { mostrarAnime() },
                 onInicio = { mostrarInicio() },
                 onMangas = { mostrandoAnime = false; mostrandoDetalleAnime = false; abrirTodosLosMangas() },
-                onFavoritos = { mostrandoAnime = false; mostrandoDetalleAnime = false; mostrarPantallaEspecial(true) },
+                onFavoritos = { mostrandoAnime = false; mostrandoDetalleAnime = false; mostrarPerfil() },
                 onHistorial = { mostrandoAnime = false; mostrandoDetalleAnime = false; mostrarPantallaEspecial(false) }
             ))
         }
@@ -1406,7 +1406,7 @@ class MainActivity : Activity() {
                 tarjetaSerie.setOnLongClickListener {
                     AlertDialog.Builder(this@MainActivity)
                         .setTitle("Quitar de Mis animes")
-                        .setMessage("¿Querés quitar «" + tituloSerie + "» del historial? Se conservarán tus favoritos y los episodios marcados como vistos.")
+                        .setMessage("¿Querés quitar «" + tituloSerie + "» del historial? Se conservarán tu perfil y los episodios marcados como vistos.")
                         .setNegativeButton("Cancelar", null)
                         .setPositiveButton("Quitar") { _, _ ->
                             val historialActual = runCatching {
@@ -1437,7 +1437,7 @@ class MainActivity : Activity() {
             dialogo.getButton(AlertDialog.BUTTON_NEUTRAL)?.setOnClickListener {
                 AlertDialog.Builder(this)
                     .setTitle("¿Limpiar el historial?")
-                    .setMessage("Se quitarán los episodios recientes y el acceso rápido de «Seguí mirando». Tus favoritos y episodios marcados como vistos se conservarán.")
+                    .setMessage("Se quitarán los episodios recientes y el acceso rápido de «Seguí mirando». Tu perfil y los episodios marcados como vistos se conservarán.")
                     .setNegativeButton("Cancelar", null)
                     .setPositiveButton("Limpiar") { _, _ ->
                         preferencias.edit()
@@ -2046,7 +2046,7 @@ class MainActivity : Activity() {
             }
 
             espacio(22)
-            contenido.addView(texto("Mangas favoritos", 19f, true))
+            contenido.addView(texto("Mangas que te gustan", 19f, true))
             espacio(8)
             val mangasGuardados = favoritos.mapNotNull { id ->
                 catalogo.firstOrNull { it.id == id } ?: seriesGuardadas[id]
@@ -2261,7 +2261,7 @@ class MainActivity : Activity() {
             espacio(20)
         }
 
-        // Estante de favoritos personal, disponible desde el inicio.
+        // Estante personal de Me gusta, disponible desde el inicio.
         val seriesFavoritas = (obtenerMangasEstado("Me gusta") + favoritos.mapNotNull { id ->
             catalogo.firstOrNull { it.id == id } ?: seriesGuardadas[id]
         }).distinctBy { it.id }
@@ -2500,6 +2500,8 @@ class MainActivity : Activity() {
 
     private fun guardarEstadoManga(serie: Serie, categoria: String?) {
         guardarSerieLocal(serie)
+        favoritos.remove(serie.id)
+        guardarFavoritos()
         val editor = preferencias.edit()
         listOf("Me gusta", "Viendo", "Ver más tarde").forEach { cat ->
             val key = clavePerfil("manga", cat)
@@ -2688,7 +2690,7 @@ class MainActivity : Activity() {
         filtroActual = ""
 
         construirPantalla(
-            if (esFavoritos) "Mis favoritos" else "Historial de lectura",
+            if (esFavoritos) "Mi perfil" else "Historial de lectura",
             false
         )
 
@@ -2718,7 +2720,7 @@ class MainActivity : Activity() {
             contenido.addView(
                 texto(
                     if (mostrandoFavoritos) {
-                        "Todavía no tenés favoritos guardados."
+                        "Todavía no hay contenido en esta categoría del perfil."
                     } else {
                         "Todavía no hay mangas en tu historial."
                     },
