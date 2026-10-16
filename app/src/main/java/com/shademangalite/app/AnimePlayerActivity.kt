@@ -91,13 +91,24 @@ class AnimePlayerActivity : Activity() {
             isClickable = true
             isFocusable = true
             setOnClickListener {
-                player?.pause()
-                startActivity(Intent(this@AnimePlayerActivity, VlcPlayerActivity::class.java).apply {
-                    putExtra(EXTRA_URL, intent.getStringExtra(EXTRA_URL).orEmpty())
-                    putExtra(EXTRA_TIPO, intent.getStringExtra(EXTRA_TIPO).orEmpty())
-                    putExtra(EXTRA_TITULO, intent.getStringExtra(EXTRA_TITULO).orEmpty())
-                    putExtra(EXTRA_SERVIDOR, intent.getStringExtra(EXTRA_SERVIDOR).orEmpty())
-                })
+                val videoUrl = intent.getStringExtra(EXTRA_URL).orEmpty()
+                val videoTipo = intent.getStringExtra(EXTRA_TIPO).orEmpty().lowercase()
+                val mime = if (videoTipo == "hls") "application/vnd.apple.mpegurl" else "video/mp4"
+                val vlcIntent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(android.net.Uri.parse(videoUrl), mime)
+                    setPackage("org.videolan.vlc")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                try {
+                    player?.pause()
+                    startActivity(vlcIntent)
+                } catch (_: android.content.ActivityNotFoundException) {
+                    Toast.makeText(
+                        this@AnimePlayerActivity,
+                        "No se pudo abrir VLC con este enlace. Comprobá que VLC esté instalado y actualizado.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
         }
         contenedor.addView(botonVlc, FrameLayout.LayoutParams(
