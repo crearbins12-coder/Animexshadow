@@ -176,7 +176,7 @@ class AnimeCatalogScreen(
                 intArrayOf(Color.rgb(55, 31, 87), Color.rgb(25, 29, 53), Color.rgb(17, 22, 36))
             ).apply {
                 cornerRadius = dp(24).toFloat()
-                setStroke(dp(1), Color.rgb(78, 57, 112))
+                setStroke(dp(1), Color.rgb(111, 73, 153))
             }
         }
 
@@ -189,7 +189,7 @@ class AnimeCatalogScreen(
         })
 
         encabezado.addView(TextView(context).apply {
-            text = "Tu próximo\nanime favorito."
+            text = "Todo el anime que te gusta.\nUna nueva historia te espera."
             textSize = 30f
             setLineSpacing(0f, 0.96f)
             setTypeface(null, Typeface.BOLD)
@@ -198,7 +198,7 @@ class AnimeCatalogScreen(
         })
 
         encabezado.addView(TextView(context).apply {
-            text = "Historias nuevas para maratonear."
+            text = "Descubrí, elegí y seguí viendo."
             textSize = 13f
             setTextColor(colorSecundario)
             setPadding(0, dp(3), 0, 0)
