@@ -89,6 +89,8 @@ class MainActivity : Activity() {
         mutableMapOf<String, Int>()
 
     private var generacionCatalogo = 0
+    // Identifica cada apertura del lector para descartar respuestas de capítulos anteriores.
+    private var generacionLector = 0
     private var posicionCatalogoGuardada = 0
     private var restaurarPosicionCatalogo = false
 
@@ -164,6 +166,7 @@ class MainActivity : Activity() {
         if (lectorActivo) guardarProgreso()
         generacionCatalogo++
         generacionAnime++
+        generacionLector++
         ejecutor.shutdownNow()
         cancelarBusquedaManga()
         ejecutorBusqueda.shutdownNow()
@@ -1782,6 +1785,8 @@ class MainActivity : Activity() {
     // =====================================================
 
     private fun mostrarLector(serie: Serie, capitulo: Capitulo) {
+        val generacion = ++generacionLector
+
         if (!lectorActivo) {
             raizAnteriorLector = raiz
         }
@@ -1798,8 +1803,6 @@ class MainActivity : Activity() {
         }
 
         mostrarPantallaCarga("Cargando páginas...")
-
-        val generacion = generacionCatalogo
 
         ejecutor.execute {
             try {
@@ -1829,7 +1832,7 @@ class MainActivity : Activity() {
                     if (
                         isFinishing ||
                         isDestroyed ||
-                        generacion != generacionCatalogo
+                        generacion != generacionLector
                     ) return@runOnUiThread
 
                     paginasActuales = paginas
@@ -1840,7 +1843,7 @@ class MainActivity : Activity() {
                     if (
                         isFinishing ||
                         isDestroyed ||
-                        generacion != generacionCatalogo
+                        generacion != generacionLector
                     ) return@runOnUiThread
 
                     mostrarError("Error al cargar páginas: ${e.message}")
@@ -2328,6 +2331,7 @@ class MainActivity : Activity() {
     // =====================================================
 
     private fun salirDelLector() {
+        generacionLector++
         guardarProgreso()
         lectorActivo = false
         restaurarPantallaCompleta(false)
