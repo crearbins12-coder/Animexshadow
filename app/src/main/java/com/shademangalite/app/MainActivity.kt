@@ -1589,7 +1589,39 @@ class MainActivity : Activity() {
         }
 
         if (mostrandoFavoritos) {
-            mostrarListaEspecial("Mis favoritos", favoritos.toList())
+            contenido.addView(boton("← Volver al inicio") { mostrarInicio() })
+            espacio(12)
+            contenido.addView(texto("Mi lista", 24f, true))
+            espacio(6)
+            contenido.addView(texto("Tus animes y mangas guardados en un solo lugar.", 13f, false).apply {
+                setTextColor(textoSecundario)
+            })
+            espacio(18)
+
+            val animesGuardados = obtenerAnimesFavoritos()
+            contenido.addView(texto("Anime", 19f, true))
+            espacio(8)
+            if (animesGuardados.isNotEmpty()) {
+                agregarCarruselAnime(animesGuardados)
+            } else {
+                contenido.addView(texto("Todavía no guardaste animes. Entrá a un anime y tocá «AGREGAR A MI LISTA».", 13f, false).apply {
+                    setTextColor(textoSecundario)
+                })
+            }
+
+            espacio(22)
+            contenido.addView(texto("Mangas favoritos", 19f, true))
+            espacio(8)
+            val mangasGuardados = favoritos.mapNotNull { id ->
+                catalogo.firstOrNull { it.id == id } ?: seriesGuardadas[id]
+            }.distinctBy { it.id }
+            if (mangasGuardados.isNotEmpty()) {
+                agregarCuadricula(mangasGuardados)
+            } else {
+                contenido.addView(texto("Todavía no guardaste mangas.", 13f, false).apply {
+                    setTextColor(textoSecundario)
+                })
+            }
             return
         }
 
