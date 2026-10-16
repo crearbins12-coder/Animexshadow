@@ -12,8 +12,9 @@
         android:name=".AnimePlayerActivity"
         android:exported="false" />
 
-    <activity
-        android:name=".MainActivity"
+    <activity android:name=".VlcPlayerActivity" android:exported="false" />
+
+    <activity android:name=".MainActivity"
         android:exported="true">
 
         <intent-filter>
