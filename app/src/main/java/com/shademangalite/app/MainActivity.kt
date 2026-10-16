@@ -1110,7 +1110,8 @@ class MainActivity : Activity() {
             val token: String,
             val numero: Int,
             val estado: String,
-            val porcentaje: Int
+            val porcentaje: Int,
+            val fecha: Long
         )
 
         val historial = runCatching {
@@ -1143,7 +1144,8 @@ class MainActivity : Activity() {
                     token,
                     episodio,
                     estado,
-                    if (estado == "TERMINADO") 100 else porcentaje
+                    if (estado == "TERMINADO") 100 else porcentaje,
+                    item.optLong("fecha", 0L)
                 )
             }
         }.distinctBy { "${it.token}_${it.numero}" }
@@ -1245,6 +1247,8 @@ class MainActivity : Activity() {
                 .sortedWith(
                     compareByDescending<List<EpisodioGuardado>> {
                         it.any { episodio -> episodio.estado == "EN CURSO" }
+                    }.thenByDescending { serie ->
+                        serie.maxOfOrNull { it.fecha } ?: 0L
                     }.thenByDescending { serie ->
                         serie.maxOfOrNull { it.numero } ?: 0
                     }
