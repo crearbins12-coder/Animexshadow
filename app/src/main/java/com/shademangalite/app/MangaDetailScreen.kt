@@ -120,6 +120,26 @@ fun construir(destino: LinearLayout) {
         }
     )
 
+    if (capitulos.isNotEmpty()) {
+        val capituloInicial = capitulos.first()
+        espacioEn(destino, 12)
+        destino.addView(crearBoton("▣  LEER CAPÍTULO ${capituloInicial.numero}") {
+            alAbrirCapitulo(capituloInicial)
+        }.apply {
+            setTextColor(Color.WHITE)
+            background = GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(Color.rgb(151, 66, 240), Color.rgb(82, 53, 175))
+            ).apply { cornerRadius = dp(13).toFloat() }
+            gravity = Gravity.CENTER
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            elevation = dp(3).toFloat()
+        }, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            dp(48)
+        ))
+    }
+
     espacioEn(destino, 14)
 
     destino.addView(
