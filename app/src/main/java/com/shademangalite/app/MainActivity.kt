@@ -674,7 +674,9 @@ class MainActivity : Activity() {
                 }
             },
             onCargarMas = { referenciaPantalla[0]?.let { cargarMasAnime(it) } },
-            onSeleccionarAnime = { anime -> mostrarDetalleAnime(anime) }
+            onSeleccionarAnime = { anime -> mostrarDetalleAnime(anime) },
+            esFavorito = { anime -> esAnimeFavorito(anime) },
+            onAlternarFavorito = { anime -> alternarAnimeFavorito(anime) }
         )
         referenciaPantalla[0] = pantalla
 
