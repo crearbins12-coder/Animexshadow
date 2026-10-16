@@ -1256,6 +1256,8 @@ class MainActivity : Activity() {
             grupos.forEach { episodiosOriginales ->
                 val episodiosSerie = episodiosOriginales.sortedByDescending { it.numero }
                 val principal = episodiosSerie.firstOrNull { it.estado == "EN CURSO" } ?: episodiosSerie.first()
+                val tituloSerie = preferencias.getString("anime_titulo_${principal.token}", "").orEmpty()
+                    .ifBlank { principal.titulo.substringBefore(" · Episodio").ifBlank { principal.titulo } }
                 val tarjetaSerie = LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
@@ -1273,7 +1275,7 @@ class MainActivity : Activity() {
                             "Episodio ${episodio.numero} · $estado"
                         }.toTypedArray()
                         AlertDialog.Builder(this@MainActivity)
-                            .setTitle(principal.titulo)
+                            .setTitle(tituloSerie)
                             .setItems(opcionesEpisodios) { _, indice ->
                                 episodiosSerie.getOrNull(indice)?.let { seleccionado ->
                                     dialogo.dismiss()
@@ -1300,7 +1302,7 @@ class MainActivity : Activity() {
                     setPadding(dp(11), dp(2), dp(3), dp(2))
                 }
                 datos.addView(TextView(this).apply {
-                    text = principal.titulo
+                    text = tituloSerie
                     textSize = 14f
                     setTypeface(typeface, Typeface.BOLD)
                     setTextColor(textoColor)
@@ -1382,6 +1384,29 @@ class MainActivity : Activity() {
                 tarjetaSerie.addView(datos, LinearLayout.LayoutParams(
                     0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
                 ))
+                tarjetaSerie.setOnLongClickListener {
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle("Quitar de Mis animes")
+                        .setMessage("¿Querés quitar «" + tituloSerie + "» del historial? Se conservarán tus favoritos y los episodios marcados como vistos.")
+                        .setNegativeButton("Cancelar", null)
+                        .setPositiveButton("Quitar") { _, _ ->
+                            val historialActual = runCatching {
+                                JSONArray(preferencias.getString("anime_historial", "[]").orEmpty())
+                            }.getOrElse { JSONArray() }
+                            val actualizado = JSONArray()
+                            for (indice in 0 until historialActual.length()) {
+                                val item = historialActual.optJSONObject(indice) ?: continue
+                                if (item.optString("token") != principal.token) actualizado.put(item)
+                            }
+                            preferencias.edit()
+                                .putString("anime_historial", actualizado.toString())
+                                .apply()
+                            dialogo.dismiss()
+                            mostrarHistorialAnime()
+                        }
+                        .show()
+                    true
+                }
                 lista.addView(tarjetaSerie, LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
                 ).apply { bottomMargin = dp(9) })
