@@ -3,14 +3,13 @@ package com.shademangalite.app
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.graphics.Color
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.Toast
+import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
@@ -18,11 +17,12 @@ import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
+import org.json.JSONArray
+import org.json.JSONObject
 
 class AnimePlayerActivity : Activity() {
 
@@ -31,15 +31,20 @@ class AnimePlayerActivity : Activity() {
         const val EXTRA_TIPO = "anime_video_tipo"
         const val EXTRA_TITULO = "anime_video_titulo"
         const val EXTRA_SERVIDOR = "anime_video_servidor"
+        const val EXTRA_ANIME_TOKEN = "anime_token"
+        const val EXTRA_EPISODIO = "anime_episodio_numero"
+        const val EXTRA_SIGUIENTE = "anime_siguiente_numero"
+        private const val PREFS = "shademanga_lectura"
     }
 
     private var player: ExoPlayer? = null
-    private var playerView: PlayerView? = null
-    private val diagnosticoHandler = Handler(Looper.getMainLooper())
-    private var fotogramasPerdidos = 0
-    private var ultimoReportePerdidos = 0
-    private var textoDiagnostico: TextView? = null
-    private var tareaDiagnostico: Runnable? = null
+    private var tokenAnime = ""
+    private var numeroEpisodio = 0
+    private var siguienteEpisodio = 0
+
+    private val preferencias by lazy {
+        getSharedPreferences(PREFS, MODE_PRIVATE)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,6 +53,9 @@ class AnimePlayerActivity : Activity() {
         val tipo = intent.getStringExtra(EXTRA_TIPO).orEmpty().lowercase()
         val titulo = intent.getStringExtra(EXTRA_TITULO).orEmpty().ifBlank { "Anime" }
         val servidor = intent.getStringExtra(EXTRA_SERVIDOR).orEmpty()
+        tokenAnime = intent.getStringExtra(EXTRA_ANIME_TOKEN).orEmpty()
+        numeroEpisodio = intent.getIntExtra(EXTRA_EPISODIO, 0)
+        siguienteEpisodio = intent.getIntExtra(EXTRA_SIGUIENTE, 0)
 
         if (!url.startsWith("https://") || (tipo != "mp4" && tipo != "hls")) {
             Toast.makeText(this, "Enlace de reproducción no válido.", Toast.LENGTH_LONG).show()
@@ -55,7 +63,10 @@ class AnimePlayerActivity : Activity() {
             return
         }
 
-        // Recordar la elección: los próximos videos se abrirán directamente en VLC.
+        registrarHistorial(titulo)
+
+        // Se conserva la opción probada por el usuario. VLC externo no permite
+        // consultar desde esta app el minuto real de reproducción.
         if (getPreferences(MODE_PRIVATE).getBoolean("usar_vlc_siempre", false)) {
             abrirVlcExterno(url, tipo)
             finish()
@@ -68,46 +79,43 @@ class AnimePlayerActivity : Activity() {
             setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
             keepScreenOn = true
         }
-        playerView = vista
 
-        // Panel temporal de diagnóstico para detectar saltos sin copiar el enlace.
         val contenedor = FrameLayout(this)
         contenedor.addView(vista, FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         ))
-        val diagnostico = TextView(this).apply {
-            setTextColor(Color.WHITE)
-            setBackgroundColor(0x99000000.toInt())
-            textSize = 12f
-            setPadding(12, 8, 12, 8)
-            text = "Diagnóstico: preparando video…"
-        }
-        textoDiagnostico = diagnostico
-        contenedor.addView(diagnostico, FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            Gravity.TOP or Gravity.START
-        ))
-        val botonVlc = TextView(this).apply {
-            text = "Usar VLC siempre"
-            setTextColor(Color.WHITE)
-            setBackgroundColor(0xCC512DA8.toInt())
-            textSize = 14f
-            setPadding(18, 12, 18, 12)
-            isClickable = true
-            isFocusable = true
-            setOnClickListener {
-                getPreferences(MODE_PRIVATE).edit().putBoolean("usar_vlc_siempre", true).apply()
-                player?.pause()
-                abrirVlcExterno(url, tipo)
-            }
+
+        val botonVlc = crearBoton("Abrir en VLC") {
+            guardarProgreso()
+            getPreferences(MODE_PRIVATE).edit().putBoolean("usar_vlc_siempre", true).apply()
+            player?.pause()
+            abrirVlcExterno(url, tipo)
         }
         contenedor.addView(botonVlc, FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
             Gravity.TOP or Gravity.END
         ))
+
+        if (siguienteEpisodio > 0 && tokenAnime.isNotBlank()) {
+            val botonSiguiente = crearBoton("Siguiente episodio →") {
+                guardarProgreso()
+                val intentSiguiente = Intent(this, MainActivity::class.java).apply {
+                    putExtra("abrir_siguiente_token", tokenAnime)
+                    putExtra("abrir_siguiente_numero", siguienteEpisodio)
+                    addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                }
+                startActivity(intentSiguiente)
+                finish()
+            }
+            contenedor.addView(botonSiguiente, FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM or Gravity.END
+            ))
+        }
+
         setContentView(contenedor)
 
         val httpFactory = DefaultHttpDataSource.Factory()
@@ -116,17 +124,11 @@ class AnimePlayerActivity : Activity() {
             .setDefaultRequestProperties(mapOf("Referer" to "https://shademanga.com/"))
         val dataSourceFactory = DefaultDataSource.Factory(this, httpFactory)
         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
-
-        // Un poco más de búfer ayuda a disimular bajadas breves de velocidad.
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(20_000, 60_000, 2_500, 5_000)
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()
-
-        // Si un decodificador de video no funciona bien con cierto codec,
-        // permite probar otro decodificador compatible del dispositivo.
-        val renderersFactory = DefaultRenderersFactory(this)
-            .setEnableDecoderFallback(true)
+        val renderersFactory = DefaultRenderersFactory(this).setEnableDecoderFallback(true)
 
         val exo = ExoPlayer.Builder(this, renderersFactory)
             .setMediaSourceFactory(mediaSourceFactory)
@@ -135,31 +137,6 @@ class AnimePlayerActivity : Activity() {
         player = exo
         vista.player = exo
 
-        exo.addAnalyticsListener(object : AnalyticsListener {
-            override fun onDroppedVideoFrames(
-                eventTime: AnalyticsListener.EventTime,
-                droppedFrames: Int,
-                elapsedMs: Long
-            ) {
-                fotogramasPerdidos += droppedFrames
-            }
-        })
-
-        val actualizarDiagnostico = object : Runnable {
-            override fun run() {
-                val actual = player
-                val etiqueta = textoDiagnostico
-                if (actual == null || etiqueta == null || isFinishing || isDestroyed) return
-                val nuevosPerdidos = fotogramasPerdidos - ultimoReportePerdidos
-                ultimoReportePerdidos = fotogramasPerdidos
-                etiqueta.text = "Diagnóstico · Perdidos: $fotogramasPerdidos (+$nuevosPerdidos) · " +
-                    "Búfer: ${((actual.bufferedPosition - actual.currentPosition).coerceAtLeast(0) / 1000)} s"
-                diagnosticoHandler.postDelayed(this, 2000)
-            }
-        }
-        tareaDiagnostico = actualizarDiagnostico
-        diagnosticoHandler.postDelayed(actualizarDiagnostico, 2000)
-
         exo.addListener(object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
                 Toast.makeText(
@@ -167,6 +144,10 @@ class AnimePlayerActivity : Activity() {
                     "No se pudo reproducir el video: " + (error.localizedMessage ?: "error de lectura"),
                     Toast.LENGTH_LONG
                 ).show()
+            }
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (!isPlaying) guardarProgreso()
             }
         })
 
@@ -177,8 +158,71 @@ class AnimePlayerActivity : Activity() {
             .setMediaMetadata(MediaMetadata.Builder().setTitle(titulo).setArtist(servidor).build())
             .build()
         exo.setMediaItem(item)
+
+        val claveProgreso = claveProgreso()
+        val posicionGuardada = if (claveProgreso.isNotBlank()) {
+            preferencias.getLong(claveProgreso, 0L)
+        } else 0L
+        if (posicionGuardada > 5_000L) exo.seekTo(posicionGuardada)
         exo.prepare()
         exo.playWhenReady = true
+    }
+
+    private fun crearBoton(etiqueta: String, accion: () -> Unit): TextView =
+        TextView(this).apply {
+            text = etiqueta
+            setTextColor(Color.WHITE)
+            setBackgroundColor(0xDD512DA8.toInt())
+            textSize = 14f
+            setPadding(18, 12, 18, 12)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { accion() }
+        }
+
+    private fun claveProgreso(): String =
+        if (tokenAnime.isNotBlank() && numeroEpisodio > 0) {
+            "anime_progreso_${tokenAnime}_${numeroEpisodio}"
+        } else ""
+
+    private fun guardarProgreso() {
+        val actual = player ?: return
+        val clave = claveProgreso()
+        if (clave.isNotBlank()) {
+            val posicion = actual.currentPosition.coerceAtLeast(0L)
+            preferencias.edit().putLong(clave, posicion).apply()
+            preferencias.edit()
+                .putString("anime_ultimo_token", tokenAnime)
+                .putInt("anime_ultimo_numero", numeroEpisodio)
+                .putInt("anime_ultimo_siguiente", siguienteEpisodio)
+                .apply()
+        }
+    }
+
+    private fun registrarHistorial(titulo: String) {
+        if (tokenAnime.isBlank() || numeroEpisodio <= 0) return
+        val items = runCatching {
+            JSONArray(preferencias.getString("anime_historial", "[]").orEmpty())
+        }.getOrElse { JSONArray() }
+        val nuevo = JSONObject()
+            .put("token", tokenAnime)
+            .put("episodio", numeroEpisodio)
+            .put("siguiente", siguienteEpisodio)
+            .put("titulo", titulo)
+            .put("fecha", System.currentTimeMillis())
+        val resultado = JSONArray().put(nuevo)
+        for (i in 0 until items.length()) {
+            val item = items.optJSONObject(i) ?: continue
+            if (item.optString("token") == tokenAnime &&
+                item.optInt("episodio") == numeroEpisodio) continue
+            if (resultado.length() < 20) resultado.put(item)
+        }
+        preferencias.edit()
+            .putString("anime_historial", resultado.toString())
+            .putString("anime_ultimo_token", tokenAnime)
+            .putInt("anime_ultimo_numero", numeroEpisodio)
+            .putInt("anime_ultimo_siguiente", siguienteEpisodio)
+            .apply()
     }
 
     private fun abrirVlcExterno(videoUrl: String, videoTipo: String) {
@@ -196,14 +240,15 @@ class AnimePlayerActivity : Activity() {
         }
     }
 
+    override fun onPause() {
+        guardarProgreso()
+        super.onPause()
+    }
+
     override fun onStop() {
-        tareaDiagnostico?.let { diagnosticoHandler.removeCallbacks(it) }
-        tareaDiagnostico = null
-        textoDiagnostico = null
-        playerView?.player = null
+        guardarProgreso()
         player?.release()
         player = null
-        playerView = null
         window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         super.onStop()
     }
