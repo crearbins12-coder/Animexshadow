@@ -1267,13 +1267,6 @@ class MainActivity : Activity() {
             )
         }
 
-        espacio(8)
-        contenido.addView(
-            boton("🔎 Buscar en todo el catálogo") {
-                buscarEnTodoElCatalogo(filtroActual)
-            }
-        )
-
         if (hayMasCatalogo || cargandoMasCatalogo || errorCargaCatalogo) {
             espacio(8)
 
