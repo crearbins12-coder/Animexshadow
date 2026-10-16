@@ -340,7 +340,13 @@ class MainActivity : Activity() {
             .putInt(claveProgreso(serie, capitulo), paginaActual)
             .putInt(
                 claveScroll(serie, capitulo),
-                scrollLector?.scrollY ?: posicionVerticalGuardada
+                if (modoLectura == "vertical") {
+                    scrollLector?.scrollY ?: posicionVerticalGuardada
+                } else {
+                    // En modo página, scrollLector podría pertenecer al capítulo anterior.
+                    // Conserva la posición vertical guardada, sin copiar un scroll obsoleto.
+                    posicionVerticalGuardada
+                }
             )
             .putString("modo_lectura", modoLectura)
             .putString("ultima_serie", serie.id)
