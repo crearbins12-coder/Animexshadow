@@ -399,8 +399,15 @@ class MainActivity : Activity() {
 
         val encabezado = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(14), dp(16), dp(14))
-            setBackgroundColor(Color.rgb(24, 23, 29))
+            setPadding(dp(18), dp(17), dp(18), dp(17))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(61, 28, 92), Color.rgb(31, 27, 51), Color.rgb(18, 20, 31))
+            ).apply {
+                cornerRadius = dp(22).toFloat()
+                setStroke(dp(1), Color.rgb(91, 60, 125))
+            }
+            elevation = dp(3).toFloat()
         }
 
         val insignia = TextView(this).apply {
@@ -425,10 +432,15 @@ class MainActivity : Activity() {
         )
 
         encabezado.addView(
-            texto(titulo, 25f, true).apply {
+            texto(
+                if (titulo == "AnimexShadow" && !mostrandoAnime) "Tu próximo\nmundo favorito."
+                else titulo,
+                if (titulo == "AnimexShadow" && !mostrandoAnime) 29f else 25f,
+                true
+            ).apply {
                 setTextColor(Color.WHITE)
-                letterSpacing = -0.015f
-                setPadding(0, dp(7), 0, dp(2))
+                letterSpacing = -0.02f
+                setPadding(0, dp(8), 0, dp(3))
             }
         )
 
@@ -437,7 +449,7 @@ class MainActivity : Activity() {
                 if (mostrandoFavoritos) "Tu colección personal, siempre a mano."
                 else if (mostrandoHistorial) "Retomá donde dejaste la lectura."
                 else if (mostrandoTodos) "Encontrá tu próxima historia favorita."
-                else "Mundos nuevos. Historias que enganchan.",
+                else "Anime para maratonear. Manga para perderte.",
                 13f,
                 false
             ).apply {
@@ -447,6 +459,47 @@ class MainActivity : Activity() {
 
         // Encabezado compacto: catálogo al frente, sin banners decorativos.
 
+
+        if (titulo == "AnimexShadow" && !mostrandoFavoritos && !mostrandoHistorial) {
+            val accionesHero = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dp(13), 0, 0)
+            }
+            accionesHero.addView(
+                TextView(this).apply {
+                    text = "▶  Explorar anime"
+                    textSize = 13f
+                    typeface = Typeface.DEFAULT_BOLD
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.WHITE)
+                    setPadding(dp(12), dp(11), dp(12), dp(11))
+                    background = crearFondo(acento, 12)
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener { mostrarAnime() }
+                },
+                LinearLayout.LayoutParams(0, dp(44), 1f).apply { marginEnd = dp(6) }
+            )
+            accionesHero.addView(
+                TextView(this).apply {
+                    text = "▤  Explorar manga"
+                    textSize = 13f
+                    typeface = Typeface.DEFAULT_BOLD
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.WHITE)
+                    setPadding(dp(12), dp(11), dp(12), dp(11))
+                    background = crearFondo(Color.rgb(44, 40, 59), 12).apply {
+                        setStroke(dp(1), Color.rgb(98, 75, 126))
+                    }
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener { abrirTodosLosMangas() }
+                },
+                LinearLayout.LayoutParams(0, dp(44), 1f).apply { marginStart = dp(6) }
+            )
+            encabezado.addView(accionesHero)
+        }
 
         if (conBuscador) {
             buscador = EditText(this).apply {
@@ -514,7 +567,7 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                setMargins(dp(10), dp(8), dp(10), dp(4))
+                setMargins(dp(12), dp(10), dp(12), dp(6))
             }
         )
 
