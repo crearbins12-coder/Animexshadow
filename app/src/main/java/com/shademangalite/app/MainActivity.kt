@@ -838,11 +838,18 @@ class MainActivity : Activity() {
         mostrandoDetalleAnime = true
         animeActual = anime
 
+        val tokenUltimoAnime = preferencias.getString("anime_ultimo_token", "").orEmpty()
+        val numeroUltimoEpisodio = preferencias.getInt("anime_ultimo_numero", 0)
+        val episodioGuardado = numeroUltimoEpisodio.takeIf {
+            tokenUltimoAnime == anime.token && it > 0
+        }
         val pantalla = AnimeDetailScreen(
             context = this, colorFondo = fondo, colorTarjeta = tarjeta,
             colorAcento = acento, colorTexto = textoColor, colorSecundario = textoSecundario,
             onVolver = { mostrarAnime() },
-            onSeleccionarEpisodio = { episodio -> cargarEpisodioAnime(anime, episodio) }
+            onSeleccionarEpisodio = { episodio -> cargarEpisodioAnime(anime, episodio) },
+            ultimoEpisodioVisto = episodioGuardado,
+            onContinuarEpisodio = { numero -> reproducirEpisodioGuardado(anime.token, numero) }
         )
         val raizDetalle = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
