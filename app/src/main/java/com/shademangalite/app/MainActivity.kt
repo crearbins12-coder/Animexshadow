@@ -84,6 +84,8 @@ class MainActivity : Activity() {
 
     private val idsCatalogo = mutableSetOf<String>()
     private val ejecutor = Executors.newSingleThreadExecutor()
+    // Las búsquedas tienen su propio hilo para no esperar a la carga del catálogo o del lector.
+    private val ejecutorBusqueda = Executors.newFixedThreadPool(2)
 
     private val preferencias by lazy {
         getSharedPreferences("shademanga_lectura", MODE_PRIVATE)
@@ -145,6 +147,7 @@ class MainActivity : Activity() {
         generacionCatalogo++
         generacionAnime++
         ejecutor.shutdownNow()
+        ejecutorBusqueda.shutdownNow()
         restaurarPantallaCompleta(false)
         super.onDestroy()
     }
@@ -1356,7 +1359,7 @@ class MainActivity : Activity() {
             return
         }
 
-        ejecutor.execute {
+        ejecutorBusqueda.execute {
             try {
                 fun coincide(serie: Serie): Boolean =
                     serie.titulo.contains(consulta, ignoreCase = true) ||
