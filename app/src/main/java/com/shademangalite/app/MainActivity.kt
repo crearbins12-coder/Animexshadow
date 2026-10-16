@@ -1024,7 +1024,7 @@ class MainActivity : Activity() {
         val elementos = (0 until historial.length()).mapNotNull { i ->
             historial.optJSONObject(i)?.let { item ->
                 Triple(
-                    "${item.optString("titulo", "Anime")}",
+                    item.optString("titulo", "Anime"),
                     item.optString("token"),
                     item.optInt("episodio")
                 )
