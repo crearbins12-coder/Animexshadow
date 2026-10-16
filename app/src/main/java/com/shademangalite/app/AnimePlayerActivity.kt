@@ -168,6 +168,10 @@ class AnimePlayerActivity : Activity() {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 if (!isPlaying) guardarProgreso()
             }
+
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_ENDED) marcarEpisodioComoVisto()
+            }
         })
 
         val mime = if (tipo == "hls") "application/x-mpegURL" else "video/mp4"
@@ -211,12 +215,33 @@ class AnimePlayerActivity : Activity() {
         val clave = claveProgreso()
         if (clave.isNotBlank()) {
             val posicion = actual.currentPosition.coerceAtLeast(0L)
+            val duracion = actual.duration
+            if (duracion > 0L && posicion >= (duracion * 0.9).toLong()) {
+                marcarEpisodioComoVisto()
+            }
             preferencias.edit().putLong(clave, posicion).apply()
             preferencias.edit()
                 .putString("anime_ultimo_token", tokenAnime)
                 .putInt("anime_ultimo_numero", numeroEpisodio)
                 .putInt("anime_ultimo_siguiente", siguienteEpisodio)
                 .apply()
+        }
+    }
+
+    private fun marcarEpisodioComoVisto() {
+        if (tokenAnime.isBlank() || numeroEpisodio <= 0) return
+        val clave = "anime_episodios_vistos_${tokenAnime}"
+        val vistos = runCatching {
+            val array = JSONArray(preferencias.getString(clave, "[]").orEmpty())
+            (0 until array.length()).mapNotNull { array.optInt(it).takeIf { numero -> numero > 0 } }.toMutableSet()
+        }.getOrElse { mutableSetOf() }
+        if (vistos.add(numeroEpisodio)) {
+            val array = JSONArray()
+            vistos.sorted().forEach { array.put(it) }
+            preferencias.edit().putString(clave, array.toString()).apply()
+            runOnUiThread {
+                Toast.makeText(this, "Episodio $numeroEpisodio marcado como visto", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
