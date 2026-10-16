@@ -1274,6 +1274,13 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun mostrarAviso(mensaje: String) {
+        AlertDialog.Builder(this)
+            .setMessage(mensaje)
+            .setPositiveButton("Aceptar", null)
+            .show()
+    }
+
     private fun buscarEnTodoElCatalogo(consultaOriginal: String) {
         val consulta = consultaOriginal.trim()
         if (consulta.length < 2) {
