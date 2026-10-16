@@ -120,6 +120,32 @@ class AnimeDetailScreen(
         val metadatos = listOf(anime.tipo, anime.estado, if (anime.puntuacion > 0) "★ " + anime.puntuacion else "", if (detalle.numEpisodios > 0) detalle.numEpisodios.toString() + " episodios" else "").filter { it.isNotBlank() }.joinToString("  ·  ")
         if (metadatos.isNotBlank()) contenido.addView(TextView(context).apply { text = metadatos; textSize = 12f; setTextColor(colorAcento) })
         if (anime.generos.isNotBlank()) contenido.addView(TextView(context).apply { text = anime.generos; textSize = 12f; setTextColor(colorSecundario); setPadding(0, dp(8), 0, dp(4)) })
+
+        // Acción principal estilo streaming: reproducir desde la ficha sin tener que buscar la lista.
+        val primerEpisodio = detalle.episodios.minByOrNull { it.numero }
+        if (primerEpisodio != null) {
+            contenido.addView(TextView(context).apply {
+                text = "▶   REPRODUCIR EPISODIO ${primerEpisodio.numero}"
+                textSize = 13f
+                letterSpacing = 0.035f
+                setTypeface(null, Typeface.BOLD)
+                gravity = Gravity.CENTER
+                setTextColor(Color.WHITE)
+                setPadding(dp(16), dp(14), dp(16), dp(14))
+                background = GradientDrawable(
+                    GradientDrawable.Orientation.LEFT_RIGHT,
+                    intArrayOf(colorAcento, Color.rgb(105, 55, 190))
+                ).apply { cornerRadius = dp(14).toFloat() }
+                isClickable = true
+                isFocusable = true
+                elevation = dp(3).toFloat()
+                setOnClickListener { onSeleccionarEpisodio(primerEpisodio) }
+            }, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(14)
+                bottomMargin = dp(4)
+            })
+        }
+
         if (detalle.sinopsis.isNotBlank()) {
             contenido.addView(TextView(context).apply { text = "Sinopsis"; textSize = 17f; setTypeface(null, Typeface.BOLD); setTextColor(colorTexto); setPadding(0, dp(16), 0, dp(5)) })
             contenido.addView(TextView(context).apply { text = detalle.sinopsis; textSize = 14f; setTextColor(colorSecundario); setLineSpacing(dp(3).toFloat(), 1f) })
