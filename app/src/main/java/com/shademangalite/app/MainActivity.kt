@@ -2278,6 +2278,13 @@ class MainActivity : Activity() {
                 contentDescription = "Página ${indice + 1}"
 
                 load(paginas[indice]) {
+                    // Evita huecos visuales mientras carga cada página vertical.
+                    placeholder(
+                        android.graphics.drawable.ColorDrawable(Color.rgb(18, 18, 18))
+                    )
+                    error(
+                        android.graphics.drawable.ColorDrawable(Color.rgb(38, 24, 30))
+                    )
                     crossfade(false)
                     memoryCachePolicy(CachePolicy.ENABLED)
                     diskCachePolicy(CachePolicy.ENABLED)
