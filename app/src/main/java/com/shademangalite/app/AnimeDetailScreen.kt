@@ -24,7 +24,9 @@ class AnimeDetailScreen(
     private val colorTexto: Int,
     private val colorSecundario: Int,
     private val onVolver: () -> Unit,
-    private val onSeleccionarEpisodio: (AnimeEpisodio) -> Unit
+    private val onSeleccionarEpisodio: (AnimeEpisodio) -> Unit,
+    private val ultimoEpisodioVisto: Int? = null,
+    private val onContinuarEpisodio: (Int) -> Unit = {}
 ) : LinearLayout(context) {
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
@@ -120,6 +122,28 @@ class AnimeDetailScreen(
         val metadatos = listOf(anime.tipo, anime.estado, if (anime.puntuacion > 0) "★ " + anime.puntuacion else "", if (detalle.numEpisodios > 0) detalle.numEpisodios.toString() + " episodios" else "").filter { it.isNotBlank() }.joinToString("  ·  ")
         if (metadatos.isNotBlank()) contenido.addView(TextView(context).apply { text = metadatos; textSize = 12f; setTextColor(colorAcento) })
         if (anime.generos.isNotBlank()) contenido.addView(TextView(context).apply { text = anime.generos; textSize = 12f; setTextColor(colorSecundario); setPadding(0, dp(8), 0, dp(4)) })
+
+        // Si ya había empezado este anime, ofrecer acceso directo al episodio guardado.
+        ultimoEpisodioVisto?.takeIf { it > 0 }?.let { numero ->
+            contenido.addView(TextView(context).apply {
+                text = "↻  CONTINUAR EPISODIO $numero"
+                textSize = 13f
+                letterSpacing = 0.025f
+                setTypeface(null, Typeface.BOLD)
+                gravity = Gravity.CENTER
+                setTextColor(colorTexto)
+                setPadding(dp(16), dp(12), dp(16), dp(12))
+                background = fondo(Color.rgb(42, 32, 57), 13).apply {
+                    setStroke(dp(1), colorAcento)
+                }
+                isClickable = true
+                isFocusable = true
+                setOnClickListener { onContinuarEpisodio(numero) }
+            }, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(10)
+                bottomMargin = dp(4)
+            })
+        }
 
         // Acción principal estilo streaming: reproducir desde la ficha sin tener que buscar la lista.
         val primerEpisodio = detalle.episodios.minByOrNull { it.numero }
