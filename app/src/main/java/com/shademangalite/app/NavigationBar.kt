@@ -25,13 +25,15 @@ class NavigationBar(
     init {
         orientation = HORIZONTAL
         gravity = Gravity.CENTER
-        background = GradientDrawable().apply {
-            setColor(ShadeTheme.fondoBarra)
-            cornerRadius = dp(18).toFloat()
-            setStroke(dp(1), Color.rgb(56, 42, 82))
+        background = GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(Color.rgb(13, 11, 18), Color.rgb(8, 8, 13))
+        ).apply {
+            setStroke(dp(1), Color.rgb(38, 31, 50))
         }
-        setPadding(dp(7), dp(7), dp(7), dp(7))
-        elevation = dp(10).toFloat()
+        setPadding(dp(5), dp(5), dp(5), dp(5))
+        minimumHeight = dp(64)
+        elevation = dp(8).toFloat()
 
         agregarOpcion("⌂", "Inicio", !mostrandoTodos && !mostrandoFavoritos && !mostrandoHistorial && !mostrandoAnime, onInicio)
         agregarOpcion("▦", "Mangas", mostrandoTodos, onMangas)
@@ -52,16 +54,16 @@ class NavigationBar(
             gravity = Gravity.CENTER
             isClickable = true
             isFocusable = true
-            setPadding(dp(2), dp(7), dp(2), dp(7))
+            setPadding(dp(2), dp(4), dp(2), dp(4))
             if (seleccionada) {
                 background = GradientDrawable(
                     GradientDrawable.Orientation.TOP_BOTTOM,
-                    intArrayOf(Color.rgb(28, 48, 65), Color.rgb(28, 23, 49))
+                    intArrayOf(Color.rgb(75, 37, 116), Color.rgb(37, 24, 58))
                 ).apply {
-                    cornerRadius = dp(13).toFloat()
-                    setStroke(dp(1), acento)
+                    cornerRadius = dp(12).toFloat()
+                    setStroke(dp(1), Color.rgb(151, 83, 231))
                 }
-                elevation = dp(3).toFloat()
+                elevation = dp(2).toFloat()
             }
             setOnClickListener { accion() }
         }
