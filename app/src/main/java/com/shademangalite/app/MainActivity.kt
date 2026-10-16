@@ -1100,32 +1100,68 @@ class MainActivity : Activity() {
 
     private fun mostrarHistorialAnime() {
         val historial = runCatching {
-            org.json.JSONArray(preferencias.getString("anime_historial", "[]").orEmpty())
-        }.getOrElse { org.json.JSONArray() }
-        if (historial.length() == 0) {
-            AlertDialog.Builder(this)
-                .setTitle("Historial de anime")
-                .setMessage("Todavía no hay episodios en tu historial.")
+            JSONArray(preferencias.getString("anime_historial", "[]").orEmpty())
+        }.getOrElse { JSONArray() }
+
+        val elementos = (0 until historial.length()).mapNotNull { i ->
+            historial.optJSONObject(i)?.let { item ->
+                val token = item.optString("token")
+                val episodio = item.optInt("episodio")
+                if (token.isBlank() || episodio <= 0) return@let null
+                val clave = "anime_progreso_${token}_${episodio}"
+                val posicion = preferencias.getLong(clave, 0L)
+                val duracion = preferencias.getLong("${clave}_duracion", 0L)
+                val vistos = runCatching {
+                    val array = JSONArray(preferencias.getString("anime_episodios_vistos_${token}", "[]").orEmpty())
+                    (0 until array.length()).any { array.optInt(it) == episodio }
+                }.getOrDefault(false)
+                val porcentaje = if (posicion > 0L && duracion > 0L) {
+                    ((posicion * 100L) / duracion).toInt().coerceIn(0, 100)
+                } else 0
+                val estado = when {
+                    vistos || porcentaje >= 90 -> "TERMINADO"
+                    porcentaje > 0 -> "EN CURSO · $porcentaje%"
+                    else -> "PENDIENTE"
+                }
+                Triple(
+                    "${item.optString("titulo").ifBlank { "Anime" }} · Ep. $episodio\n$estado",
+                    token,
+                    episodio
+                )
+            }
+        }
+
+        val builder = AlertDialog.Builder(this)
+            .setTitle("Historial de anime")
+        if (elementos.isEmpty()) {
+            builder.setMessage("Todavía no hay episodios en tu historial.")
                 .setPositiveButton("Aceptar", null)
                 .show()
             return
         }
-        val elementos = (0 until historial.length()).mapNotNull { i ->
-            historial.optJSONObject(i)?.let { item ->
-                Triple(
-                    item.optString("titulo", "Anime"),
-                    item.optString("token"),
-                    item.optInt("episodio")
-                )
-            }
+
+        builder.setItems(elementos.map { it.first }.toTypedArray()) { _, indice ->
+            elementos.getOrNull(indice)?.let { reproducirEpisodioGuardado(it.second, it.third) }
         }
-        AlertDialog.Builder(this)
-            .setTitle("Historial de anime")
-            .setItems(elementos.map { it.first }.toTypedArray()) { _, indice ->
-                elementos.getOrNull(indice)?.let { reproducirEpisodioGuardado(it.second, it.third) }
-            }
-            .setNegativeButton("Cerrar", null)
-            .show()
+        builder.setNeutralButton("Limpiar historial") { _, _ ->
+            AlertDialog.Builder(this)
+                .setTitle("¿Limpiar el historial?")
+                .setMessage("Se quitarán los episodios recientes y el acceso rápido de «Seguí mirando». Tus favoritos y episodios marcados como vistos se conservarán.")
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Limpiar") { _, _ ->
+                    preferencias.edit()
+                        .putString("anime_historial", "[]")
+                        .remove("anime_ultimo_token")
+                        .remove("anime_ultimo_numero")
+                        .remove("anime_ultimo_siguiente")
+                        .apply()
+                    Toast.makeText(this, "Historial limpiado", Toast.LENGTH_SHORT).show()
+                    mostrarInicio()
+                }
+                .show()
+        }
+        builder.setNegativeButton("Cerrar", null)
+        builder.show()
     }
 
     // =====================================================
