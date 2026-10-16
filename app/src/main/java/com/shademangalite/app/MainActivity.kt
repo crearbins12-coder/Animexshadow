@@ -1249,9 +1249,71 @@ class MainActivity : Activity() {
                 dp(valor)
             },
             alTocar = {
-                mostrarSerie(serie)
+                retomarLectura(serie)
             }
         )
+    }
+
+    /**
+     * Retoma el último capítulo de esta serie si coincide con el progreso guardado.
+     * Si el capítulo ya no existe o no hay progreso para esta serie, abre su listado.
+     */
+    private fun retomarLectura(serie: Serie) {
+        val idSerieGuardada = preferencias.getString("ultima_serie", "")
+        val idCapituloGuardado = preferencias.getString("ultimo_capitulo", "")
+
+        if (
+            idSerieGuardada != serie.id ||
+            idCapituloGuardado.isNullOrBlank()
+        ) {
+            mostrarSerie(serie)
+            return
+        }
+
+        fun abrirCapituloOListado(capitulos: List<Capitulo>) {
+            capitulosActuales = capitulos.toMutableList()
+            val capituloGuardado = capitulos.firstOrNull {
+                it.id == idCapituloGuardado
+            }
+            if (capituloGuardado != null) {
+                mostrarLector(serie, capituloGuardado)
+            } else {
+                mostrarListaCapitulos(serie, capitulos)
+            }
+        }
+
+        cacheCapitulosPorSerie[serie.id]?.let { guardados ->
+            abrirCapituloOListado(guardados)
+            return
+        }
+
+        mostrarPantallaCarga("Recuperando tu lectura...")
+        val generacion = ++generacionCatalogo
+        ejecutor.execute {
+            try {
+                val respuesta = consultarApi(
+                    "/api/series-locales/${serie.id}/capitulos"
+                )
+                val resultado = mangaApi.analizarCapitulos(
+                    JSONArray(respuesta)
+                ).toMutableList()
+                cacheCapitulosPorSerie[serie.id] = resultado
+
+                runOnUiThread {
+                    if (isFinishing || isDestroyed || generacion != generacionCatalogo) {
+                        return@runOnUiThread
+                    }
+                    abrirCapituloOListado(resultado)
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    if (isFinishing || isDestroyed || generacion != generacionCatalogo) {
+                        return@runOnUiThread
+                    }
+                    mostrarError("No se pudo recuperar la lectura: ${e.message}")
+                }
+            }
+        }
     }
 
     private fun mostrarPantallaEspecial(esFavoritos: Boolean) {
