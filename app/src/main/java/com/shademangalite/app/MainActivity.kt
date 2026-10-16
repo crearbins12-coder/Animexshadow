@@ -64,6 +64,7 @@ class MainActivity : Activity() {
     private var filtroActual = ""
     private val manejadorBusquedaManga = Handler(Looper.getMainLooper())
     private var busquedaMangaPendiente: Runnable? = null
+    private val cacheBusquedaManga = mutableMapOf<String, List<Serie>>()
     private var mostrandoTodos = false
     private var resultadosVisibles = 21
 
@@ -1339,11 +1340,20 @@ class MainActivity : Activity() {
         if (consulta.length < 2 || mostrandoAnime || mostrandoDetalleAnime) return
 
         val generacion = generacionCatalogo
-        val dialogo = AlertDialog.Builder(this)
-            .setMessage("Buscando «$consulta»…")
-            .setCancelable(true)
-            .create()
-        dialogo.show()
+        // Los resultados locales permanecen visibles mientras responde el servidor.
+        // Si ya buscamos este texto, reutilizamos la respuesta y evitamos otra petición.
+        val claveCache = consulta.lowercase()
+        cacheBusquedaManga[claveCache]?.let { guardados ->
+            if (generacion == generacionCatalogo && consulta == filtroActual.trim()) {
+                guardados.forEach { serie ->
+                    if (idsCatalogo.add(serie.id)) catalogo.add(serie)
+                }
+                resultadosVisibles = max(resultadosVisibles, guardados.size)
+                mostrarCatalogoFiltrado()
+                if (guardados.isEmpty()) mostrarAviso("No se encontró «$consulta» en el catálogo disponible.")
+            }
+            return
+        }
 
         ejecutor.execute {
             try {
@@ -1363,9 +1373,9 @@ class MainActivity : Activity() {
                 analizarSeries(respuestaBusqueda)
                     .filter(::coincide)
                     .forEach { encontrados[it.id] = it }
+                cacheBusquedaManga[consulta.lowercase()] = encontrados.values.toList()
 
                 runOnUiThread {
-                    dialogo.dismiss()
                     if (isFinishing || isDestroyed || generacion != generacionCatalogo ||
                         consulta != filtroActual.trim() || mostrandoAnime || mostrandoDetalleAnime
                     ) return@runOnUiThread
@@ -1382,7 +1392,6 @@ class MainActivity : Activity() {
                 }
             } catch (e: Exception) {
                 runOnUiThread {
-                    dialogo.dismiss()
                     if (isFinishing || isDestroyed || generacion != generacionCatalogo ||
                         consulta != filtroActual.trim()
                     ) return@runOnUiThread
