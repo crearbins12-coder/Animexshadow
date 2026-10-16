@@ -2660,8 +2660,37 @@ class MainActivity : Activity() {
         }
         fila.addView(portada, LinearLayout.LayoutParams(dp(68), dp(88)))
         val datos = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(11), 0, dp(5), 0) }
-        datos.addView(TextView(this).apply { text = titulo; textSize = 14f; typeface = Typeface.DEFAULT_BOLD; setTextColor(textoColor); maxLines = 2 })
-        datos.addView(TextView(this).apply { text = tipo; textSize = 11f; setTextColor(textoSecundario); setPadding(0, dp(4), 0, dp(8)) })
+        datos.addView(TextView(this).apply {
+            text = titulo
+            textSize = 14f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(textoColor)
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            contentDescription = titulo
+        })
+        datos.addView(TextView(this).apply {
+            text = tipo
+            textSize = 11f
+            setTextColor(textoSecundario)
+            setPadding(0, dp(3), 0, dp(5))
+        })
+        datos.addView(TextView(this).apply {
+            text = when (categoria) {
+                "Me gusta" -> "♥  EN ME GUSTA"
+                "Viendo" -> "◉  EN SEGUIMIENTO"
+                else -> "◷  PARA DESPUÉS"
+            }
+            textSize = 9f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.rgb(221, 199, 255))
+            setPadding(dp(7), dp(4), dp(7), dp(4))
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(48, 34, 67))
+                cornerRadius = dp(7).toFloat()
+                setStroke(dp(1), Color.rgb(82, 57, 111))
+            }
+        })
         datos.addView(TextView(this).apply {
             text = "↔  Mover de categoría"
             textSize = 11f
