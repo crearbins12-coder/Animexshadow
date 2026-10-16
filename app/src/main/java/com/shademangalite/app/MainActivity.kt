@@ -317,8 +317,7 @@ class MainActivity : Activity() {
         val serieProgramada = serieLector
         val capituloProgramado = capituloLector
 
-        lateinit var tarea: Runnable
-        tarea = Runnable {
+        val tarea = Runnable {
             if (
                 generacionProgramada == generacionLector &&
                 lectorActivo &&
@@ -327,8 +326,6 @@ class MainActivity : Activity() {
             ) {
                 tareaGuardarProgreso = null
                 guardarProgreso()
-            } else if (tareaGuardarProgreso === tarea) {
-                tareaGuardarProgreso = null
             }
         }
         tareaGuardarProgreso = tarea
