@@ -2431,26 +2431,27 @@ class MainActivity : Activity() {
     }
 
     /**
-     * Precarga solamente la página siguiente para reducir la espera al avanzar
-     * sin llenar la memoria con demasiadas imágenes en dispositivos modestos.
+     * Precarga las páginas vecinas para que avanzar y retroceder sea más fluido.
+     * Se limita a una página por lado para cuidar la memoria en dispositivos modestos.
      */
     private fun precargarPaginaSiguiente(paginas: List<String>) {
-        val indiceSiguiente = paginaActual + 1
-        val url = paginas.getOrNull(indiceSiguiente) ?: return
+        val indicesVecinos = listOf(paginaActual - 1, paginaActual + 1)
+        val ancho = resources.displayMetrics.widthPixels.coerceAtLeast(1)
+        val alto = resources.displayMetrics.heightPixels.coerceAtLeast(1)
 
-        val solicitud = ImageRequest.Builder(this)
-            .data(url)
-            .memoryCachePolicy(CachePolicy.ENABLED)
-            .diskCachePolicy(CachePolicy.ENABLED)
-            .precision(Precision.INEXACT)
-            .scale(Scale.FIT)
-            .size(
-                resources.displayMetrics.widthPixels.coerceAtLeast(1),
-                resources.displayMetrics.heightPixels.coerceAtLeast(1)
-            )
-            .build()
+        indicesVecinos.forEach { indice ->
+            val url = paginas.getOrNull(indice) ?: return@forEach
+            val solicitud = ImageRequest.Builder(this)
+                .data(url)
+                .memoryCachePolicy(CachePolicy.ENABLED)
+                .diskCachePolicy(CachePolicy.ENABLED)
+                .precision(Precision.INEXACT)
+                .scale(Scale.FIT)
+                .size(ancho, alto)
+                .build()
 
-        imageLoader.enqueue(solicitud)
+            imageLoader.enqueue(solicitud)
+        }
     }
 
     private fun avanzarPagina(paginas: List<String>) {
