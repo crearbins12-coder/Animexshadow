@@ -1312,6 +1312,22 @@ class MainActivity : Activity() {
                     setTextColor(textoSecundario)
                     setPadding(0, dp(4), 0, dp(3))
                 })
+                if (principal.fecha > 0L) {
+                    val diferencia = (System.currentTimeMillis() - principal.fecha).coerceAtLeast(0L)
+                    val hace = when {
+                        diferencia < 60_000L -> "Visto recién"
+                        diferencia < 3_600_000L -> "Visto hace ${diferencia / 60_000L} min"
+                        diferencia < 86_400_000L -> "Visto hace ${diferencia / 3_600_000L} h"
+                        diferencia < 604_800_000L -> "Visto hace ${diferencia / 86_400_000L} d"
+                        else -> "Última vez hace más de una semana"
+                    }
+                    datos.addView(TextView(this).apply {
+                        text = hace
+                        textSize = 10f
+                        setTextColor(textoSecundario)
+                        setPadding(0, dp(3), 0, 0)
+                    })
+                }
                 val estadoTexto = when (principal.estado) {
                     "EN CURSO" -> "▶ Ep. ${principal.numero} · EN CURSO · ${principal.porcentaje}%"
                     "TERMINADO" -> "✓ Último episodio terminado"
