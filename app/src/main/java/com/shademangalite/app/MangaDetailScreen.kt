@@ -1,6 +1,7 @@
 package com.shademangalite.app
 
 import android.content.Context
+import android.app.AlertDialog
 import android.graphics.Color
 import android.view.View
 import android.view.Gravity
@@ -28,6 +29,7 @@ private val dp: (Int) -> Int,
 private val espacioEn: (LinearLayout, Int) -> Unit,
 private val alVolver: () -> Unit,
 private val alAlternarFavorito: () -> Unit,
+private val alCambiarCategoria: (String?) -> Unit,
 private val alAbrirCapitulo: (Capitulo) -> Unit
 ) {
 
@@ -111,12 +113,30 @@ fun construir(destino: LinearLayout) {
     destino.addView(
         crearBoton(
             if (esFavorito) {
-                "★ Quitar de favoritos"
+                "♥  Me gusta"
             } else {
-                "☆ Agregar a favoritos"
+                "♡  Me gusta"
             }
         ) {
             alAlternarFavorito()
+        }
+    )
+    espacioEn(destino, 7)
+
+    destino.addView(
+        crearBoton("＋  Organizar en mi perfil") {
+            AlertDialog.Builder(context)
+                .setTitle("Guardar " + serie.titulo)
+                .setItems(arrayOf("♥  Me gusta", "◉  Viendo", "◷  Ver más tarde", "Quitar del perfil")) { _, indice ->
+                    alCambiarCategoria(when (indice) {
+                        0 -> "Me gusta"
+                        1 -> "Viendo"
+                        2 -> "Ver más tarde"
+                        else -> null
+                    })
+                }
+                .setNegativeButton("Cancelar", null)
+                .show()
         }
     )
 
