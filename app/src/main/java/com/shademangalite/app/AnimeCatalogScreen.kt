@@ -519,11 +519,11 @@ class AnimeCatalogScreen(
         )
 
         val botonFavorito = TextView(context).apply {
-            text = if (esFavorito(anime)) "★" else "＋"
+            text = if (esFavorito(anime)) "♥" else "＋"
             textSize = 21f
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
-            contentDescription = if (esFavorito(anime)) "Quitar ${anime.titulo} de Mi lista" else "Agregar ${anime.titulo} a Mi lista"
+            contentDescription = if (esFavorito(anime)) "Quitar ${anime.titulo} de Me gusta" else "Agregar ${anime.titulo} a Me gusta"
             background = GradientDrawable().apply {
                 setColor(Color.argb(220, 31, 22, 45))
                 cornerRadius = dp(22).toFloat()
@@ -534,8 +534,8 @@ class AnimeCatalogScreen(
             elevation = dp(4).toFloat()
             setOnClickListener {
                 val guardado = onAlternarFavorito(anime)
-                text = if (guardado) "★" else "＋"
-                contentDescription = if (guardado) "Quitar ${anime.titulo} de Mi lista" else "Agregar ${anime.titulo} a Mi lista"
+                text = if (guardado) "♥" else "＋"
+                contentDescription = if (guardado) "Quitar ${anime.titulo} de Me gusta" else "Agregar ${anime.titulo} a Me gusta"
             }
         }
         marcoPortada.addView(
