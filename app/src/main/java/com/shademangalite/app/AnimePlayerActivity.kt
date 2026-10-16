@@ -46,6 +46,10 @@ class AnimePlayerActivity : Activity() {
         getSharedPreferences(PREFS, MODE_PRIVATE)
     }
 
+    private val preferenciasJugador by lazy {
+        getSharedPreferences("animex_player_settings", MODE_PRIVATE)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -65,9 +69,15 @@ class AnimePlayerActivity : Activity() {
 
         registrarHistorial(titulo)
 
-        // Se conserva la opción probada por el usuario. VLC externo no permite
-        // consultar desde esta app el minuto real de reproducción.
-        if (getPreferences(MODE_PRIVATE).getBoolean("usar_vlc_siempre", false)) {
+        // Migra la preferencia antigua para que pueda cambiarse desde la pantalla principal.
+        if (!preferenciasJugador.contains("usar_vlc_siempre")) {
+            preferenciasJugador.edit()
+                .putBoolean("usar_vlc_siempre", getPreferences(MODE_PRIVATE).getBoolean("usar_vlc_siempre", false))
+                .apply()
+        }
+
+        // Se conserva la opción de VLC, pero la app permite volver al reproductor interno.
+        if (preferenciasJugador.getBoolean("usar_vlc_siempre", false)) {
             abrirVlcExterno(url, tipo)
             finish()
             return
@@ -88,7 +98,7 @@ class AnimePlayerActivity : Activity() {
 
         val botonVlc = crearBoton("Abrir en VLC") {
             guardarProgreso()
-            getPreferences(MODE_PRIVATE).edit().putBoolean("usar_vlc_siempre", true).apply()
+            preferenciasJugador.edit().putBoolean("usar_vlc_siempre", true).apply()
             player?.pause()
             abrirVlcExterno(url, tipo)
         }
@@ -235,7 +245,7 @@ class AnimePlayerActivity : Activity() {
         try {
             startActivity(vlcIntent)
         } catch (_: android.content.ActivityNotFoundException) {
-            getPreferences(MODE_PRIVATE).edit().putBoolean("usar_vlc_siempre", false).apply()
+            preferenciasJugador.edit().putBoolean("usar_vlc_siempre", false).apply()
             Toast.makeText(this, "No se pudo abrir VLC. Se desactivó la opción de usarlo siempre.", Toast.LENGTH_LONG).show()
         }
     }
