@@ -38,7 +38,7 @@ class NavigationBar(
         agregarOpcion("⌂", "Inicio", !mostrandoTodos && !mostrandoFavoritos && !mostrandoHistorial && !mostrandoAnime, onInicio)
         agregarOpcion("▦", "Mangas", mostrandoTodos, onMangas)
         agregarOpcion("▶", "Anime", mostrandoAnime, onAnime)
-        agregarOpcion("♡", "Favoritos", mostrandoFavoritos, onFavoritos)
+        agregarOpcion("◉", "Perfil", mostrandoFavoritos, onFavoritos)
         agregarOpcion("◷", "Historial", mostrandoHistorial, onHistorial)
     }
 
