@@ -5,7 +5,9 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
+import android.view.View
 import android.widget.ImageView
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -58,12 +60,63 @@ class AnimeDetailScreen(
     fun mostrarDetalle(detalle: AnimeDetalle) {
         contenido.removeAllViews()
         val anime = detalle.anime
-        val portada = ImageView(context).apply { scaleType = ImageView.ScaleType.CENTER_CROP; contentDescription = "Portada de " + anime.titulo; background = fondo(colorTarjeta, 12) }
-        contenido.addView(portada, LayoutParams(LayoutParams.MATCH_PARENT, dp(230)))
-        if (anime.portadaUrl.isNotBlank()) {
-            portada.load(anime.portadaUrl) { crossfade(false); memoryCachePolicy(CachePolicy.ENABLED); diskCachePolicy(CachePolicy.ENABLED); precision(Precision.INEXACT); scale(Scale.FILL) }
+        val hero = FrameLayout(context).apply {
+            background = fondo(colorTarjeta, 18)
+            clipToOutline = true
+            elevation = dp(3).toFloat()
         }
-        contenido.addView(TextView(context).apply { text = anime.titulo; textSize = 23f; setTypeface(null, Typeface.BOLD); setTextColor(colorTexto); setPadding(0, dp(14), 0, dp(5)) })
+        val portada = ImageView(context).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            contentDescription = "Portada de " + anime.titulo
+            background = fondo(colorTarjeta, 18)
+        }
+        hero.addView(portada, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
+        ))
+        if (anime.portadaUrl.isNotBlank()) {
+            portada.load(anime.portadaUrl) {
+                crossfade(true)
+                memoryCachePolicy(CachePolicy.ENABLED)
+                diskCachePolicy(CachePolicy.ENABLED)
+                precision(Precision.INEXACT)
+                scale(Scale.FILL)
+            }
+        }
+        hero.addView(View(context).apply {
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.argb(12, 5, 4, 10), Color.argb(80, 5, 4, 10), Color.argb(238, 5, 4, 10))
+            )
+        }, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
+        ))
+        val heroText = LinearLayout(context).apply {
+            orientation = VERTICAL
+            gravity = Gravity.BOTTOM
+            setPadding(dp(18), dp(18), dp(18), dp(18))
+        }
+        heroText.addView(TextView(context).apply {
+            text = "✦  ANIME"
+            textSize = 10f
+            letterSpacing = 0.12f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.rgb(225, 192, 255))
+            setPadding(dp(9), dp(6), dp(9), dp(6))
+            background = fondo(Color.rgb(65, 34, 91), 8)
+        })
+        heroText.addView(TextView(context).apply {
+            text = anime.titulo
+            textSize = 25f
+            maxLines = 3
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            setShadowLayer(6f, 0f, 2f, Color.BLACK)
+            setPadding(0, dp(8), 0, 0)
+        })
+        hero.addView(heroText, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT, Gravity.BOTTOM
+        ))
+        contenido.addView(hero, LayoutParams(LayoutParams.MATCH_PARENT, dp(280)))
         val metadatos = listOf(anime.tipo, anime.estado, if (anime.puntuacion > 0) "★ " + anime.puntuacion else "", if (detalle.numEpisodios > 0) detalle.numEpisodios.toString() + " episodios" else "").filter { it.isNotBlank() }.joinToString("  ·  ")
         if (metadatos.isNotBlank()) contenido.addView(TextView(context).apply { text = metadatos; textSize = 12f; setTextColor(colorAcento) })
         if (anime.generos.isNotBlank()) contenido.addView(TextView(context).apply { text = anime.generos; textSize = 12f; setTextColor(colorSecundario); setPadding(0, dp(8), 0, dp(4)) })
