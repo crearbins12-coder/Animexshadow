@@ -89,6 +89,7 @@ class MainActivity : Activity() {
 
     private val favoritos = linkedSetOf<String>()
     private val historial = mutableListOf<String>()
+    private val seriesGuardadas = linkedMapOf<String, Serie>()
 
     private var posicionVerticalGuardada = 0
 
@@ -184,6 +185,44 @@ class MainActivity : Activity() {
                 .distinct()
                 .take(30)
         )
+
+        seriesGuardadas.clear()
+        runCatching {
+            val guardadas = JSONArray(
+                preferencias.getString("series_guardadas", "[]").orEmpty()
+            )
+            mangaApi.analizarSeries(guardadas).forEach { serie ->
+                seriesGuardadas[serie.id] = serie
+            }
+        }
+    }
+
+    private fun guardarSeriesGuardadas() {
+        val array = JSONArray()
+        seriesGuardadas.values.forEach { serie ->
+            array.put(
+                JSONObject()
+                    .put("id", serie.id)
+                    .put("publicId", serie.publicId)
+                    .put("titulo", serie.titulo)
+                    .put("autor", serie.autor)
+                    .put("portadaUrl", serie.portadaUrl)
+                    .put("totalCapitulos", serie.capitulos)
+                    .put("generos", JSONArray(
+                        serie.genero.split(",")
+                            .map { it.trim() }
+                            .filter { it.isNotBlank() }
+                    ))
+            )
+        }
+        preferencias.edit()
+            .putString("series_guardadas", array.toString())
+            .apply()
+    }
+
+    private fun guardarSerieLocal(serie: Serie) {
+        seriesGuardadas[serie.id] = serie
+        guardarSeriesGuardadas()
     }
 
     private fun guardarFavoritos() {
@@ -203,6 +242,7 @@ class MainActivity : Activity() {
     }
 
     private fun alternarFavorito(serie: Serie) {
+        guardarSerieLocal(serie)
         if (!favoritos.add(serie.id)) {
             favoritos.remove(serie.id)
         }
@@ -211,6 +251,7 @@ class MainActivity : Activity() {
     }
 
     private fun registrarLectura(serie: Serie) {
+        guardarSerieLocal(serie)
         historial.remove(serie.id)
         historial.add(0, serie.id)
         guardarHistorial()
@@ -1167,6 +1208,7 @@ class MainActivity : Activity() {
 
         val series = ids.mapNotNull { id ->
             catalogo.firstOrNull { it.id == id }
+                ?: seriesGuardadas[id]
         }.distinctBy { it.id }
 
         if (series.isEmpty()) {
