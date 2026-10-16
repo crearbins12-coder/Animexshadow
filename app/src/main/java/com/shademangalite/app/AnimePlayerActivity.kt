@@ -3,6 +3,8 @@ package com.shademangalite.app
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.graphics.Color
 import android.view.Gravity
 import android.view.ViewGroup
@@ -41,6 +43,13 @@ class AnimePlayerActivity : Activity() {
     private var tokenAnime = ""
     private var numeroEpisodio = 0
     private var siguienteEpisodio = 0
+    private val manejadorProgreso = Handler(Looper.getMainLooper())
+    private val guardarProgresoPeriodico = object : Runnable {
+        override fun run() {
+            guardarProgreso()
+            if (player != null) manejadorProgreso.postDelayed(this, 10_000L)
+        }
+    }
 
     private val preferencias by lazy {
         getSharedPreferences(PREFS, MODE_PRIVATE)
@@ -176,6 +185,8 @@ class AnimePlayerActivity : Activity() {
         if (posicionGuardada > 5_000L) exo.seekTo(posicionGuardada)
         exo.prepare()
         exo.playWhenReady = true
+        manejadorProgreso.removeCallbacks(guardarProgresoPeriodico)
+        manejadorProgreso.postDelayed(guardarProgresoPeriodico, 10_000L)
     }
 
     private fun crearBoton(etiqueta: String, accion: () -> Unit): TextView =
@@ -256,10 +267,16 @@ class AnimePlayerActivity : Activity() {
     }
 
     override fun onStop() {
+        manejadorProgreso.removeCallbacks(guardarProgresoPeriodico)
         guardarProgreso()
         player?.release()
         player = null
         window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         super.onStop()
+    }
+
+    override fun onDestroy() {
+        manejadorProgreso.removeCallbacks(guardarProgresoPeriodico)
+        super.onDestroy()
     }
 }
