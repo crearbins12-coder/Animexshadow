@@ -396,250 +396,194 @@ class MainActivity : Activity() {
         titulo: String,
         conBuscador: Boolean
     ) {
+        // Estructura base renovada: barra compacta, búsqueda integrada,
+        // contenido tipo streaming y navegación fija inferior.
         raiz = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(fondo)
+            setBackgroundColor(Color.rgb(8, 8, 13))
         }
 
-        val encabezado = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(17), dp(18), dp(17))
+        val barraSuperior = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(18), dp(10), dp(16), dp(10))
+            setBackgroundColor(Color.rgb(8, 8, 13))
+        }
+
+        val marca = TextView(this).apply {
+            text = "A✦"
+            textSize = 19f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(61, 28, 92), Color.rgb(31, 27, 51), Color.rgb(18, 20, 31))
-            ).apply {
-                cornerRadius = dp(22).toFloat()
-                setStroke(dp(1), Color.rgb(91, 60, 125))
-            }
-            elevation = dp(3).toFloat()
+                intArrayOf(Color.rgb(159, 72, 255), Color.rgb(79, 44, 166))
+            ).apply { cornerRadius = dp(12).toFloat() }
+            elevation = dp(4).toFloat()
         }
+        barraSuperior.addView(marca, LinearLayout.LayoutParams(dp(42), dp(42)))
 
-        val insignia = TextView(this).apply {
-            text = "ANIMEXSHADOW"
-            textSize = 11f
-            letterSpacing = 0.08f
+        val textosMarca = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(10), 0, 0, 0)
+        }
+        textosMarca.addView(TextView(this).apply {
+            text = if (titulo == "AnimexShadow" && !mostrandoAnime) "ANIMEXSHADOW" else titulo.uppercase()
+            textSize = 15f
+            letterSpacing = 0.045f
             typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
-            setTextColor(Color.rgb(226, 202, 255))
+            setTextColor(Color.WHITE)
+            maxLines = 1
+        })
+        textosMarca.addView(TextView(this).apply {
+            text = "TU UNIVERSO OTAKU"
+            textSize = 9f
+            letterSpacing = 0.13f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.rgb(166, 125, 221))
+        })
+        barraSuperior.addView(textosMarca, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+
+        val botonPerfil = TextView(this).apply {
+            text = "◉"
+            textSize = 20f
             gravity = Gravity.CENTER
-            setPadding(dp(11), dp(7), dp(11), dp(7))
+            setTextColor(Color.rgb(220, 204, 255))
             background = GradientDrawable().apply {
-                setColor(Color.rgb(47, 31, 72))
-                cornerRadius = dp(8).toFloat()
+                setColor(Color.rgb(25, 21, 35))
+                cornerRadius = dp(21).toFloat()
+                setStroke(dp(1), Color.rgb(77, 55, 107))
             }
+            contentDescription = "Perfil"
         }
-        encabezado.addView(
-            insignia,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-        )
-
-        encabezado.addView(
-            texto(
-                if (titulo == "AnimexShadow" && !mostrandoAnime) "Tu próximo\nmundo favorito."
-                else titulo,
-                if (titulo == "AnimexShadow" && !mostrandoAnime) 29f else 25f,
-                true
-            ).apply {
-                setTextColor(Color.WHITE)
-                letterSpacing = -0.02f
-                setPadding(0, dp(8), 0, dp(3))
-            }
-        )
-
-        encabezado.addView(
-            texto(
-                if (mostrandoFavoritos) "Tu colección personal, siempre a mano."
-                else if (mostrandoHistorial) "Retomá donde dejaste la lectura."
-                else if (mostrandoTodos) "Encontrá tu próxima historia favorita."
-                else "Anime para maratonear. Manga para perderte.",
-                13f,
-                false
-            ).apply {
-                setTextColor(Color.rgb(190, 183, 208))
-            }
-        )
-
-        // Encabezado compacto: catálogo al frente, sin banners decorativos.
-
-
-        if (titulo == "AnimexShadow" && !mostrandoFavoritos && !mostrandoHistorial) {
-            val accionesHero = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(0, dp(13), 0, 0)
-            }
-            accionesHero.addView(
-                TextView(this).apply {
-                    text = "▶  Explorar anime"
-                    textSize = 13f
-                    typeface = Typeface.DEFAULT_BOLD
-                    gravity = Gravity.CENTER
-                    setTextColor(Color.WHITE)
-                    setPadding(dp(12), dp(11), dp(12), dp(11))
-                    background = crearFondo(acento, 12)
-                    isClickable = true
-                    isFocusable = true
-                    setOnClickListener { mostrarAnime() }
-                },
-                LinearLayout.LayoutParams(0, dp(44), 1f).apply { marginEnd = dp(6) }
-            )
-            accionesHero.addView(
-                TextView(this).apply {
-                    text = "▤  Explorar manga"
-                    textSize = 13f
-                    typeface = Typeface.DEFAULT_BOLD
-                    gravity = Gravity.CENTER
-                    setTextColor(Color.WHITE)
-                    setPadding(dp(12), dp(11), dp(12), dp(11))
-                    background = crearFondo(Color.rgb(44, 40, 59), 12).apply {
-                        setStroke(dp(1), Color.rgb(98, 75, 126))
-                    }
-                    isClickable = true
-                    isFocusable = true
-                    setOnClickListener { abrirTodosLosMangas() }
-                },
-                LinearLayout.LayoutParams(0, dp(44), 1f).apply { marginStart = dp(6) }
-            )
-            encabezado.addView(accionesHero)
-        }
+        barraSuperior.addView(botonPerfil, LinearLayout.LayoutParams(dp(40), dp(40)))
+        raiz.addView(barraSuperior, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, dp(60)
+        ))
 
         if (conBuscador) {
             buscador = EditText(this).apply {
-                hint = "Buscar manga, autor o género..."
-                setHintTextColor(textoSecundario)
-                setTextColor(textoColor)
-                textSize = 15f
+                hint = "⌕   Buscar anime, manga o género"
+                setHintTextColor(Color.rgb(142, 136, 157))
+                setTextColor(Color.WHITE)
+                textSize = 14f
                 setSingleLine(true)
-                setPadding(dp(12), dp(8), dp(12), dp(8))
-                background = crearFondo(tarjeta, 14).apply {
-                    setStroke(dp(1), Color.rgb(61, 52, 81))
+                imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH
+                setPadding(dp(15), 0, dp(15), 0)
+                background = GradientDrawable().apply {
+                    setColor(Color.rgb(23, 21, 31))
+                    cornerRadius = dp(14).toFloat()
+                    setStroke(dp(1), Color.rgb(49, 41, 66))
                 }
             }
+            buscador.addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
 
-            val parametros = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(46)
-            )
-
-            parametros.topMargin = dp(12)
-            encabezado.addView(buscador, parametros)
-
-            buscador.addTextChangedListener(
-                object : TextWatcher {
-                    override fun beforeTextChanged(
-                        s: CharSequence?,
-                        start: Int,
-                        count: Int,
-                        after: Int
-                    ) = Unit
-
-                    override fun onTextChanged(
-                        s: CharSequence?,
-                        start: Int,
-                        before: Int,
-                        count: Int
-                    ) {
-                        filtroActual = s?.toString().orEmpty()
-                        resultadosVisibles = 21
-                        mostrarCatalogoFiltrado()
-
-                        // Busca también en las páginas que aún no se cargaron,
-                        // sin lanzar una petición por cada tecla.
-                        busquedaMangaPendiente?.let(manejadorBusquedaManga::removeCallbacks)
-                        val consulta = filtroActual.trim()
-                        if (consulta.length >= 2) {
-                            val tarea = Runnable {
-                                if (consulta == filtroActual.trim() && !mostrandoAnime && !mostrandoDetalleAnime) {
-                                    buscarEnTodoElCatalogo(consulta)
-                                }
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                    filtroActual = s?.toString().orEmpty()
+                    resultadosVisibles = 21
+                    mostrarCatalogoFiltrado()
+                    busquedaMangaPendiente?.let(manejadorBusquedaManga::removeCallbacks)
+                    val consulta = filtroActual.trim()
+                    if (consulta.length >= 2) {
+                        val tarea = Runnable {
+                            if (consulta == filtroActual.trim() && !mostrandoAnime && !mostrandoDetalleAnime) {
+                                buscarEnTodoElCatalogo(consulta)
                             }
-                            busquedaMangaPendiente = tarea
-                            manejadorBusquedaManga.postDelayed(tarea, 400L)
                         }
+                        busquedaMangaPendiente = tarea
+                        manejadorBusquedaManga.postDelayed(tarea, 400L)
                     }
-
-                    override fun afterTextChanged(s: Editable?) = Unit
                 }
-            )
+
+                override fun afterTextChanged(s: Editable?) = Unit
+            })
+            raiz.addView(buscador, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(46)
+            ).apply {
+                setMargins(dp(16), dp(2), dp(16), dp(8))
+            })
         }
 
-        raiz.addView(
-            encabezado,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                setMargins(dp(12), dp(10), dp(12), dp(6))
+        // Atajos de catálogo como pestañas de una plataforma de streaming.
+        if (titulo == "AnimexShadow" && !mostrandoFavoritos && !mostrandoHistorial) {
+            val pestañas = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(16), dp(2), dp(16), dp(9))
             }
-        )
+            fun agregarPestana(etiqueta: String, seleccionada: Boolean, accion: () -> Unit) {
+                val vista = TextView(this).apply {
+                    text = etiqueta
+                    textSize = 12f
+                    typeface = Typeface.DEFAULT_BOLD
+                    gravity = Gravity.CENTER
+                    setTextColor(if (seleccionada) Color.WHITE else Color.rgb(177, 169, 193))
+                    setPadding(dp(15), dp(8), dp(15), dp(8))
+                    background = GradientDrawable().apply {
+                        setColor(if (seleccionada) Color.rgb(111, 52, 183) else Color.rgb(22, 20, 29))
+                        cornerRadius = dp(18).toFloat()
+                        if (seleccionada) setStroke(dp(1), Color.rgb(175, 111, 255))
+                    }
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener { accion() }
+                }
+                pestañas.addView(vista, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, dp(36)
+                ).apply { marginEnd = dp(8) })
+            }
+            agregarPestana("Para vos", true) { mostrarInicio() }
+            agregarPestana("Anime", false) { mostrarAnime() }
+            agregarPestana("Manga", false) { abrirTodosLosMangas() }
+            raiz.addView(pestañas, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ))
+        }
 
         scrollPrincipal = object : ScrollView(this) {
-            override fun onScrollChanged(
-                l: Int,
-                t: Int,
-                oldl: Int,
-                oldt: Int
-            ) {
+            override fun onScrollChanged(l: Int, t: Int, oldl: Int, oldt: Int) {
                 super.onScrollChanged(l, t, oldl, oldt)
-
-                if (
-                    !cargaInfinitaActiva ||
-                    !mostrandoTodos ||
-                    filtroActual.isNotBlank() ||
-                    !hayMasCatalogo ||
-                    cargandoMasCatalogo ||
-                    errorCargaCatalogo ||
-                    childCount == 0
+                if (!cargaInfinitaActiva || !mostrandoTodos || filtroActual.isNotBlank() ||
+                    !hayMasCatalogo || cargandoMasCatalogo || errorCargaCatalogo || childCount == 0
                 ) return
-
                 val interior = getChildAt(0)
-                val distanciaAlFinal =
-                    interior.bottom - (height + scrollY)
-
-                if (distanciaAlFinal <= dp(500)) {
-                    cargarMasCatalogo()
-                }
+                if (interior.bottom - (height + scrollY) <= dp(500)) cargarMasCatalogo()
             }
         }.apply {
             isFillViewport = true
             clipToPadding = false
+            overScrollMode = View.OVER_SCROLL_NEVER
         }
 
         contenido = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(10), dp(8), dp(10), dp(24))
+            setPadding(dp(16), dp(6), dp(16), dp(28))
         }
-
         scrollPrincipal.addView(contenido)
+        raiz.addView(scrollPrincipal, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
+        ))
 
-        raiz.addView(
-            scrollPrincipal,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                0,
-                1f
-            )
+        val nav = NavigationBar(
+            context = this,
+            acento = acento,
+            textoSecundario = textoSecundario,
+            mostrandoTodos = mostrandoTodos,
+            mostrandoFavoritos = mostrandoFavoritos,
+            mostrandoHistorial = mostrandoHistorial,
+            mostrandoAnime = mostrandoAnime,
+            onAnime = { mostrarAnime() },
+            onInicio = { mostrarInicio() },
+            onMangas = { abrirTodosLosMangas() },
+            onFavoritos = { mostrarPantallaEspecial(true) },
+            onHistorial = { mostrarPantallaEspecial(false) }
         )
-
-        raiz.addView(
-            NavigationBar(
-                context = this,
-                acento = acento,
-                textoSecundario = textoSecundario,
-                mostrandoTodos = mostrandoTodos,
-                mostrandoFavoritos = mostrandoFavoritos,
-                mostrandoHistorial = mostrandoHistorial,
-                mostrandoAnime = mostrandoAnime,
-                onAnime = { mostrarAnime() },
-                onInicio = { mostrarInicio() },
-                onMangas = { abrirTodosLosMangas() },
-                onFavoritos = { mostrarPantallaEspecial(true) },
-                onHistorial = { mostrarPantallaEspecial(false) }
-            )
-        )
-
+        raiz.addView(nav, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, dp(66)
+        ))
         setContentView(raiz)
     }
 
@@ -1345,6 +1289,11 @@ class MainActivity : Activity() {
             clipToOutline = true
             elevation = dp(3).toFloat()
         }
+
+        hero.layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, dp(350)
+        )
+        hero.minimumHeight = dp(350)
 
         val portada = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
