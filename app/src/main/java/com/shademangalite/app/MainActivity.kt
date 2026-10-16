@@ -1313,11 +1313,37 @@ class MainActivity : Activity() {
                     val barra = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
                         max = 100
                         progress = principal.porcentaje
+                        progressTintList = android.content.res.ColorStateList.valueOf(acento)
                     }
                     datos.addView(barra, LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT, dp(5)
                     ).apply { topMargin = dp(8) })
                 }
+                // Acceso directo: reanuda el episodio en curso sin abrir primero el selector.
+                datos.addView(TextView(this).apply {
+                    text = if (principal.estado == "EN CURSO") "▶  CONTINUAR" else "▶  REPRODUCIR EP. " + principal.numero
+                    textSize = 11f
+                    setTypeface(typeface, Typeface.BOLD)
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.WHITE)
+                    setPadding(dp(10), dp(9), dp(10), dp(9))
+                    background = crearFondo(
+                        if (principal.estado == "EN CURSO") acento else Color.rgb(67, 48, 88), 9
+                    )
+                    isClickable = true
+                    isFocusable = true
+                    contentDescription = if (principal.estado == "EN CURSO") {
+                        "Continuar episodio " + principal.numero + " de " + principal.titulo
+                    } else {
+                        "Reproducir episodio " + principal.numero + " de " + principal.titulo
+                    }
+                    setOnClickListener {
+                        dialogo.dismiss()
+                        reproducirEpisodioGuardado(principal.token, principal.numero)
+                    }
+                }, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = dp(9) })
                 datos.addView(TextView(this).apply {
                     text = "Ver episodios  ›"
                     textSize = 11f
