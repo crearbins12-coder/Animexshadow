@@ -30,6 +30,7 @@ import coil.size.Scale
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.max
 import kotlin.math.min
@@ -86,6 +87,7 @@ class MainActivity : Activity() {
     private val ejecutor = Executors.newSingleThreadExecutor()
     // Las búsquedas tienen su propio hilo para no esperar a la carga del catálogo o del lector.
     private val ejecutorBusqueda = Executors.newFixedThreadPool(2)
+    private var tareaBusquedaActual: Future<*>? = null
 
     private val preferencias by lazy {
         getSharedPreferences("shademanga_lectura", MODE_PRIVATE)
@@ -147,6 +149,7 @@ class MainActivity : Activity() {
         generacionCatalogo++
         generacionAnime++
         ejecutor.shutdownNow()
+        tareaBusquedaActual?.cancel(true)
         ejecutorBusqueda.shutdownNow()
         restaurarPantallaCompleta(false)
         super.onDestroy()
@@ -1344,6 +1347,12 @@ class MainActivity : Activity() {
         if (consulta.length < 2 || mostrandoAnime || mostrandoDetalleAnime) return
 
         val generacion = generacionCatalogo
+        // Cancelar y retirar búsquedas anteriores que todavía estén en cola.
+        // Así una consulta vieja no retrasa la consulta más reciente.
+        tareaBusquedaActual?.cancel(true)
+        ejecutorBusqueda.purge()
+        tareaBusquedaActual = null
+
         // Los resultados locales permanecen visibles mientras responde el servidor.
         // Si ya buscamos este texto, reutilizamos la respuesta y evitamos otra petición.
         val claveCache = consulta.lowercase()
@@ -1359,7 +1368,7 @@ class MainActivity : Activity() {
             return
         }
 
-        ejecutorBusqueda.execute {
+        tareaBusquedaActual = ejecutorBusqueda.submit {
             try {
                 fun coincide(serie: Serie): Boolean =
                     serie.titulo.contains(consulta, ignoreCase = true) ||
