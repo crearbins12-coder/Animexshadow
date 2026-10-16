@@ -646,6 +646,22 @@ class MainActivity : Activity() {
                     setMargins(0, 0, dp(6), 0)
                 })
             }
+            val siguienteGuardado = preferencias.getInt("anime_ultimo_siguiente", 0)
+            if (ultimoToken.isNotBlank() && siguienteGuardado > 0) {
+                filaAnime.addView(TextView(this@MainActivity).apply {
+                    text = "Siguiente →"
+                    textSize = 13f
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.WHITE)
+                    setPadding(dp(10), dp(10), dp(10), dp(10))
+                    background = crearFondo(Color.rgb(45, 85, 105), 10)
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener { reproducirEpisodioGuardado(ultimoToken, siguienteGuardado) }
+                }, LinearLayout.LayoutParams(0, dp(44), 1f).apply {
+                    setMargins(0, 0, dp(6), 0)
+                })
+            }
             filaAnime.addView(TextView(this@MainActivity).apply {
                 text = "Historial"
                 textSize = 13f
@@ -883,7 +899,10 @@ class MainActivity : Activity() {
                             .setNegativeButton("Cancelar", null)
                             .show()
                     } else {
-                        abrirReproductorAnime(video, servidor, tituloEpisodio)
+                        abrirReproductorAnime(
+                            video, servidor, tituloEpisodio,
+                            animeToken, numeroEpisodio, siguienteEpisodio
+                        )
                     }
                 } else {
                     val resumen = errores.take(4).joinToString("\n\n")
