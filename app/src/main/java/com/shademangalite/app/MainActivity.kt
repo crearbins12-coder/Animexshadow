@@ -2238,40 +2238,10 @@ class MainActivity : Activity() {
             )
         )
 
-        zona.setOnTouchListener(object : View.OnTouchListener {
-            private var inicioX = 0f
-            private var inicioY = 0f
-
-            override fun onTouch(v: View, event: MotionEvent): Boolean {
-                when (event.action) {
-                    MotionEvent.ACTION_DOWN -> {
-                        inicioX = event.x
-                        inicioY = event.y
-                        return true
-                    }
-
-                    MotionEvent.ACTION_UP -> {
-                        val dx = event.x - inicioX
-                        val dy = event.y - inicioY
-
-                        if (
-                            abs(dx) > dp(70) &&
-                            abs(dx) > abs(dy)
-                        ) {
-                            if (dx < 0) {
-                                avanzarPagina(paginas)
-                            } else {
-                                retrocederPagina(paginas)
-                            }
-                        }
-
-                        return true
-                    }
-                }
-
-                return true
-            }
-        })
+        imagen.configurarGestos(
+            alDeslizarIzquierda = { avanzarPagina(paginas) },
+            alDeslizarDerecha = { retrocederPagina(paginas) }
+        )
 
         pantalla.addView(
             zona,
@@ -2509,6 +2479,162 @@ class MainActivity : Activity() {
                 cargarCatalogo()
             }
         )
+    }
+
+    // =====================================================
+    // IMAGEN DEL LECTOR: ZOOM, DESPLAZAMIENTO Y GESTOS
+    // =====================================================
+
+    private inner class ZoomableImageView(
+        context: android.content.Context
+    ) : ImageView(context) {
+        private val matriz = android.graphics.Matrix()
+        private val valoresMatriz = FloatArray(9)
+        private var escalaActual = 1f
+        private var inicioX = 0f
+        private var inicioY = 0f
+        private var ultimoX = 0f
+        private var ultimoY = 0f
+        private var arrastrando = false
+        private var gestoMultitactil = false
+        private var alDeslizarIzquierda: (() -> Unit)? = null
+        private var alDeslizarDerecha: (() -> Unit)? = null
+
+        private val detectorEscala = android.view.ScaleGestureDetector(
+            context,
+            object : android.view.ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                override fun onScaleBegin(detector: android.view.ScaleGestureDetector): Boolean {
+                    gestoMultitactil = true
+                    arrastrando = false
+                    return true
+                }
+
+                override fun onScale(detector: android.view.ScaleGestureDetector): Boolean {
+                    val nuevaEscala = (escalaActual * detector.scaleFactor).coerceIn(1f, 5f)
+                    val factor = nuevaEscala / escalaActual
+                    matriz.postScale(factor, factor, detector.focusX, detector.focusY)
+                    escalaActual = nuevaEscala
+                    limitarDesplazamiento()
+                    imageMatrix = matriz
+                    return true
+                }
+            }
+        )
+
+        init {
+            scaleType = ScaleType.MATRIX
+            isClickable = true
+            imageMatrix = matriz
+        }
+
+        fun configurarGestos(
+            alDeslizarIzquierda: () -> Unit,
+            alDeslizarDerecha: () -> Unit
+        ) {
+            this.alDeslizarIzquierda = alDeslizarIzquierda
+            this.alDeslizarDerecha = alDeslizarDerecha
+        }
+
+        fun restablecerZoom() {
+            escalaActual = 1f
+            matriz.reset()
+            imageMatrix = matriz
+            gestoMultitactil = false
+            arrastrando = false
+        }
+
+        override fun onTouchEvent(event: MotionEvent): Boolean {
+            detectorEscala.onTouchEvent(event)
+
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    inicioX = event.x
+                    inicioY = event.y
+                    ultimoX = event.x
+                    ultimoY = event.y
+                    arrastrando = true
+                    gestoMultitactil = false
+                    parent?.requestDisallowInterceptTouchEvent(true)
+                    return true
+                }
+
+                MotionEvent.ACTION_POINTER_DOWN -> {
+                    gestoMultitactil = true
+                    arrastrando = false
+                    return true
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    if (event.pointerCount > 1) {
+                        gestoMultitactil = true
+                        arrastrando = false
+                        return true
+                    }
+                    if (arrastrando && escalaActual > 1f) {
+                        matriz.postTranslate(event.x - ultimoX, event.y - ultimoY)
+                        limitarDesplazamiento()
+                        imageMatrix = matriz
+                    }
+                    ultimoX = event.x
+                    ultimoY = event.y
+                    return true
+                }
+
+                MotionEvent.ACTION_UP -> {
+                    val dx = event.x - inicioX
+                    val dy = event.y - inicioY
+                    if (!gestoMultitactil && escalaActual <= 1.05f &&
+                        kotlin.math.abs(dx) > dp(70) &&
+                        kotlin.math.abs(dx) > kotlin.math.abs(dy)
+                    ) {
+                        if (dx < 0) alDeslizarIzquierda?.invoke()
+                        else alDeslizarDerecha?.invoke()
+                    }
+                    arrastrando = false
+                    parent?.requestDisallowInterceptTouchEvent(false)
+                    performClick()
+                    return true
+                }
+
+                MotionEvent.ACTION_CANCEL -> {
+                    arrastrando = false
+                    parent?.requestDisallowInterceptTouchEvent(false)
+                    return true
+                }
+            }
+            return true
+        }
+
+        override fun performClick(): Boolean {
+            super.performClick()
+            return true
+        }
+
+        private fun limitarDesplazamiento() {
+            if (width <= 0 || height <= 0) return
+            matriz.getValues(valoresMatriz)
+            val escalaX = valoresMatriz[android.graphics.Matrix.MSCALE_X]
+            val escalaY = valoresMatriz[android.graphics.Matrix.MSCALE_Y]
+            val desplazamientoX = valoresMatriz[android.graphics.Matrix.MTRANS_X]
+            val desplazamientoY = valoresMatriz[android.graphics.Matrix.MTRANS_Y]
+            val anchoDibujado = drawable?.intrinsicWidth?.toFloat()?.times(escalaX) ?: width.toFloat()
+            val altoDibujado = drawable?.intrinsicHeight?.toFloat()?.times(escalaY) ?: height.toFloat()
+            val minX = min(0f, width - anchoDibujado)
+            val minY = min(0f, height - altoDibujado)
+            val corregirX = when {
+                anchoDibujado <= width -> (width - anchoDibujado) / 2f - desplazamientoX
+                desplazamientoX > 0f -> -desplazamientoX
+                desplazamientoX < minX -> minX - desplazamientoX
+                else -> 0f
+            }
+            val corregirY = when {
+                altoDibujado <= height -> (height - altoDibujado) / 2f - desplazamientoY
+                desplazamientoY > 0f -> -desplazamientoY
+                desplazamientoY < minY -> minY - desplazamientoY
+                else -> 0f
+            }
+            matriz.postTranslate(corregirX, corregirY)
+        }
     }
 
     // =====================================================
