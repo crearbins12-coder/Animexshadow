@@ -2584,9 +2584,14 @@ class MainActivity : Activity() {
         fun renderizar(categoria: String) {
             categorias.removeAllViews()
             lista.removeAllViews()
+            // Contadores por categoría: permiten ver de un vistazo cómo está organizada la biblioteca.
+            val cantidadesPerfil = listOf("Me gusta", "Viendo", "Ver más tarde").associateWith { cat ->
+                obtenerMangasEstado(cat).size + obtenerAnimesEstado(cat).size
+            }
             listOf("Me gusta", "Viendo", "Ver más tarde").forEach { cat ->
                 val boton = TextView(this).apply {
-                    text = when (cat) { "Me gusta" -> "♥  Me gusta"; "Viendo" -> "◉  Viendo"; else -> "◷  Ver más tarde" }
+                    val simbolo = when (cat) { "Me gusta" -> "♥"; "Viendo" -> "◉"; else -> "◷" }
+                    text = "$simbolo  $cat  ${cantidadesPerfil[cat] ?: 0}"
                     textSize = 11f
                     gravity = Gravity.CENTER
                     setTypeface(null, Typeface.BOLD)
