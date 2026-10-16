@@ -26,11 +26,13 @@ class NavigationBar(
         orientation = HORIZONTAL
         gravity = Gravity.CENTER
         background = GradientDrawable().apply {
-            setColor(Color.rgb(19, 17, 29))
-            setStroke(dp(1), Color.rgb(57, 43, 78))
+            setColor(ShadeTheme.fondoBarra)
+            cornerRadius = dp(18).toFloat()
+            setStroke(dp(1), Color.rgb(56, 42, 82))
         }
-        setPadding(dp(7), dp(8), dp(7), dp(8))
-        elevation = dp(12).toFloat()
+        setPadding(dp(7), dp(7), dp(7), dp(7))
+        elevation = dp(10).toFloat()
+
         agregarOpcion("⌂", "Inicio", !mostrandoTodos && !mostrandoFavoritos && !mostrandoHistorial && !mostrandoAnime, onInicio)
         agregarOpcion("▦", "Mangas", mostrandoTodos, onMangas)
         agregarOpcion("▶", "Anime", mostrandoAnime, onAnime)
@@ -38,27 +40,49 @@ class NavigationBar(
         agregarOpcion("◷", "Historial", mostrandoHistorial, onHistorial)
     }
 
-    private fun agregarOpcion(icono: String, titulo: String, seleccionada: Boolean, accion: () -> Unit) {
+    private fun agregarOpcion(
+        icono: String,
+        titulo: String,
+        seleccionada: Boolean,
+        accion: () -> Unit
+    ) {
         val color = if (seleccionada) acento else textoSecundario
         val opcion = LinearLayout(context).apply {
             orientation = VERTICAL
             gravity = Gravity.CENTER
             isClickable = true
             isFocusable = true
-            setPadding(dp(3), dp(6), dp(3), dp(6))
+            setPadding(dp(2), dp(7), dp(2), dp(7))
             if (seleccionada) {
-                background = GradientDrawable().apply {
-                    setColor(Color.rgb(58, 38, 83))
-                    cornerRadius = dp(14).toFloat()
-                    setStroke(dp(1), Color.rgb(157, 105, 218))
+                background = GradientDrawable(
+                    GradientDrawable.Orientation.TOP_BOTTOM,
+                    intArrayOf(Color.rgb(28, 48, 65), Color.rgb(28, 23, 49))
+                ).apply {
+                    cornerRadius = dp(13).toFloat()
+                    setStroke(dp(1), acento)
                 }
+                elevation = dp(3).toFloat()
             }
             setOnClickListener { accion() }
         }
-        opcion.addView(TextView(context).apply { text = icono; textSize = 21f; gravity = Gravity.CENTER; setTextColor(color) })
-        opcion.addView(TextView(context).apply { text = titulo; textSize = 10.5f; gravity = Gravity.CENTER; setTextColor(color) })
+
+        opcion.addView(TextView(context).apply {
+            text = icono
+            textSize = 21f
+            gravity = Gravity.CENTER
+            setTextColor(color)
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+        })
+        opcion.addView(TextView(context).apply {
+            text = titulo
+            textSize = 10.5f
+            gravity = Gravity.CENTER
+            setTextColor(color)
+            if (seleccionada) typeface = android.graphics.Typeface.DEFAULT_BOLD
+        })
         addView(opcion, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
     }
 
-    private fun dp(valor: Int): Int = (valor * resources.displayMetrics.density).toInt()
+    private fun dp(valor: Int): Int =
+        (valor * resources.displayMetrics.density).toInt()
 }
