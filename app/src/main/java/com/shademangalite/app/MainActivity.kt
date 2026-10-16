@@ -2605,9 +2605,9 @@ class MainActivity : Activity() {
             isHorizontalScrollBarEnabled = false
             isFillViewport = true
             clipToPadding = false
-            addView(filaCategorias, HorizontalScrollView.LayoutParams(
-                HorizontalScrollView.LayoutParams.WRAP_CONTENT,
-                HorizontalScrollView.LayoutParams.WRAP_CONTENT
+            addView(filaCategorias, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
             ))
         }
         raizPerfil.addView(categorias)
