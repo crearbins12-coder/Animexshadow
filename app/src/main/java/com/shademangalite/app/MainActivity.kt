@@ -1233,11 +1233,11 @@ class MainActivity : Activity() {
             }
 
             filtrados.forEach { episodio ->
-                val tarjeta = LinearLayout(this).apply {
+                val tarjetaEpisodio = LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
                     setPadding(dp(9), dp(9), dp(9), dp(9))
-                    background = crearFondo(tarjeta, 14)
+                    background = crearFondo(this@MainActivity.tarjeta, 14)
                     isClickable = true
                     isFocusable = true
                     setOnClickListener {
@@ -1252,7 +1252,7 @@ class MainActivity : Activity() {
                     val anime = animesConocidos.firstOrNull { it.token == episodio.token }
                     if (!anime?.portadaUrl.isNullOrBlank()) load(anime?.portadaUrl)
                 }
-                tarjeta.addView(portada, LinearLayout.LayoutParams(dp(76), dp(100)))
+                tarjetaEpisodio.addView(portada, LinearLayout.LayoutParams(dp(76), dp(100)))
                 val datos = LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL
                     setPadding(dp(11), dp(2), dp(3), dp(2))
@@ -1295,10 +1295,10 @@ class MainActivity : Activity() {
                     setTextColor(Color.WHITE)
                     setPadding(0, dp(7), 0, 0)
                 })
-                tarjeta.addView(datos, LinearLayout.LayoutParams(
+                tarjetaEpisodio.addView(datos, LinearLayout.LayoutParams(
                     0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
                 ))
-                lista.addView(tarjeta, LinearLayout.LayoutParams(
+                lista.addView(tarjetaEpisodio, LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
                 ).apply { bottomMargin = dp(9) })
             }
