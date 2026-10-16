@@ -1352,46 +1352,17 @@ class MainActivity : Activity() {
                         serie.autor.contains(consulta, ignoreCase = true) ||
                         serie.genero.contains(consulta, ignoreCase = true)
 
-                // Primero usamos el mismo patrón de búsqueda del catálogo de anime:
-                // enviar el texto al servidor con q= y recibir resultados paginados.
+                // Endpoint específico de búsqueda de ShadeManga.
+                // Evita recorrer cientos de páginas y reduce las solicitudes al servidor.
                 val rutaBusqueda =
-                    "/api/series-locales?pageSize=$tamanoPaginaCatalogo&page=1&q=${Uri.encode(consulta)}"
-                val respuestaBusqueda = runCatching {
-                    JSONArray(consultarApi(rutaBusqueda))
-                }.getOrNull()
-                val resultadosServidor = respuestaBusqueda
-                    ?.let { analizarSeries(it) }
-                    .orEmpty()
-                    .filter(::coincide)
-
-                // Si el endpoint ignora q, devuelve una página completa sin filtrar.
-                // En ese caso usamos el recorrido paginado anterior como respaldo.
-                val endpointPareceBuscar =
-                    respuestaBusqueda != null &&
-                        (respuestaBusqueda.length() < tamanoPaginaCatalogo ||
-                            respuestaBusqueda.length() == 0) &&
-                        (respuestaBusqueda.length() == 0 ||
-                            analizarSeries(respuestaBusqueda).all(::coincide))
-
+                    "/api/series-locales/search-candidates" +
+                        "?q=${Uri.encode(consulta)}" +
+                        "&includeAdult=false&showSinPortada=false&take=120"
+                val respuestaBusqueda = JSONArray(consultarApi(rutaBusqueda))
                 val encontrados = linkedMapOf<String, Serie>()
-                if (endpointPareceBuscar && resultadosServidor.isNotEmpty()) {
-                    resultadosServidor.forEach { encontrados[it.id] = it }
-                } else {
-                    var pagina = 1
-                    var continuar = true
-                    while (continuar && pagina <= 200) {
-                        val respuesta = consultarApi(
-                            "/api/series-locales?pageSize=$tamanoPaginaCatalogo&page=$pagina"
-                        )
-                        val array = JSONArray(respuesta)
-                        val seriesPagina = analizarSeries(array)
-                        seriesPagina.filter(::coincide).forEach {
-                            encontrados[it.id] = it
-                        }
-                        continuar = array.length() >= tamanoPaginaCatalogo
-                        pagina++
-                    }
-                }
+                analizarSeries(respuestaBusqueda)
+                    .filter(::coincide)
+                    .forEach { encontrados[it.id] = it }
 
                 runOnUiThread {
                     dialogo.dismiss()
