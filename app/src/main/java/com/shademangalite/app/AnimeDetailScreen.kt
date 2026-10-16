@@ -9,6 +9,7 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 import coil.load
@@ -193,6 +194,28 @@ class AnimeDetailScreen(
                 val texto = LinearLayout(context).apply { orientation = VERTICAL }
                 texto.addView(TextView(context).apply { text = episodio.titulo.ifBlank { "Episodio " + episodio.numero }; textSize = 14f; setTypeface(null, Typeface.BOLD); setTextColor(colorTexto) })
                 if (episodio.fechaEmision.isNotBlank()) texto.addView(TextView(context).apply { text = episodio.fechaEmision; textSize = 11f; setTextColor(colorSecundario); setPadding(0, dp(3), 0, 0) })
+                val prefsProgreso = context.getSharedPreferences("shademanga_lectura", Context.MODE_PRIVATE)
+                val claveProgreso = "anime_progreso_${anime.token}_${episodio.numero}"
+                val posicion = prefsProgreso.getLong(claveProgreso, 0L)
+                val duracion = prefsProgreso.getLong("${claveProgreso}_duracion", 0L)
+                val porcentaje = if (duracion > 0L) ((posicion * 100L / duracion).toInt()).coerceIn(0, 100) else 0
+                if (!vistos.contains(episodio.numero) && posicion > 5_000L) {
+                    texto.addView(TextView(context).apply {
+                        text = if (porcentaje > 0) "EN CURSO · $porcentaje%" else "EN CURSO"
+                        textSize = 10f
+                        setTypeface(null, Typeface.BOLD)
+                        setTextColor(colorAcento)
+                        setPadding(0, dp(5), 0, dp(2))
+                    })
+                    if (porcentaje > 0) {
+                        texto.addView(ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
+                            max = 100
+                            progress = porcentaje
+                            progressTintList = android.content.res.ColorStateList.valueOf(colorAcento)
+                            progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.argb(70, 150, 150, 150))
+                        }, LayoutParams(LayoutParams.MATCH_PARENT, dp(3)).apply { topMargin = dp(2) })
+                    }
+                }
                 fila.addView(texto, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
                 fila.addView(TextView(context).apply { text = "▶"; textSize = 18f; setTextColor(colorAcento); gravity = Gravity.CENTER; setPadding(dp(6), 0, dp(6), 0) })
                 val botonVisto = TextView(context).apply {
