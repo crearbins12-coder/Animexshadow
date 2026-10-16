@@ -2447,6 +2447,237 @@ class MainActivity : Activity() {
         }
     }
 
+
+    // Biblioteca del perfil: cada obra pertenece a una sola categoría.
+    private fun clavePerfil(tipo: String, categoria: String): String {
+        val sufijo = when (categoria) {
+            "Me gusta" -> "me_gusta"
+            "Viendo" -> "viendo"
+            else -> "ver_mas_tarde"
+        }
+        return "perfil_${tipo}_${sufijo}"
+    }
+
+    private fun guardarEstadoAnime(anime: Anime, categoria: String?) {
+        val editor = preferencias.edit()
+        listOf("Me gusta", "Viendo", "Ver más tarde").forEach { cat ->
+            val key = clavePerfil("anime", cat)
+            val lista = runCatching { JSONArray(preferencias.getString(key, "[]").orEmpty()) }.getOrElse { JSONArray() }
+            val nueva = JSONArray()
+            for (i in 0 until lista.length()) {
+                val item = lista.optJSONObject(i) ?: continue
+                if (item.optString("token") != anime.token) nueva.put(item)
+            }
+            if (categoria == cat) {
+                nueva.put(JSONObject().put("token", anime.token).put("slug", anime.slug)
+                    .put("titulo", anime.titulo).put("tipo", anime.tipo).put("estado", anime.estado)
+                    .put("generos", anime.generos).put("puntuacion", anime.puntuacion)
+                    .put("portadaUrl", anime.portadaUrl))
+            }
+            editor.putString(key, nueva.toString())
+        }
+        editor.apply()
+        // Mantener metadatos en caché para recuperar la ficha aunque no esté en destacados.
+        preferencias.edit().putString("anime_portada_${anime.token}", anime.portadaUrl)
+            .putString("anime_titulo_${anime.token}", anime.titulo).apply()
+    }
+
+    private fun obtenerAnimesEstado(categoria: String): List<Anime> {
+        val array = runCatching { JSONArray(preferencias.getString(clavePerfil("anime", categoria), "[]").orEmpty()) }
+            .getOrElse { JSONArray() }
+        return (0 until array.length()).mapNotNull { i ->
+            val item = array.optJSONObject(i) ?: return@mapNotNull null
+            val token = item.optString("token")
+            if (token.isBlank()) return@mapNotNull null
+            Anime(token, item.optString("slug"), item.optString("titulo", "Anime"),
+                item.optString("tipo"), item.optString("estado"), item.optString("generos"),
+                item.optDouble("puntuacion", 0.0), false, item.optString("portadaUrl"))
+        }.distinctBy { it.token }
+    }
+
+    private fun guardarEstadoManga(serie: Serie, categoria: String?) {
+        guardarSerieLocal(serie)
+        val editor = preferencias.edit()
+        listOf("Me gusta", "Viendo", "Ver más tarde").forEach { cat ->
+            val key = clavePerfil("manga", cat)
+            val lista = runCatching { JSONArray(preferencias.getString(key, "[]").orEmpty()) }.getOrElse { JSONArray() }
+            val nueva = JSONArray()
+            for (i in 0 until lista.length()) {
+                val item = lista.optJSONObject(i) ?: continue
+                if (item.optString("id") != serie.id) nueva.put(item)
+            }
+            if (categoria == cat) {
+                nueva.put(JSONObject().put("id", serie.id).put("publicId", serie.publicId)
+                    .put("titulo", serie.titulo).put("autor", serie.autor).put("portadaUrl", serie.portadaUrl)
+                    .put("totalCapitulos", serie.capitulos).put("generos", JSONArray(serie.genero.split(",").map { it.trim() }.filter { it.isNotBlank() })))
+            }
+            editor.putString(key, nueva.toString())
+        }
+        editor.apply()
+    }
+
+    private fun obtenerMangasEstado(categoria: String): List<Serie> {
+        val array = runCatching { JSONArray(preferencias.getString(clavePerfil("manga", categoria), "[]").orEmpty()) }
+            .getOrElse { JSONArray() }
+        return (0 until array.length()).mapNotNull { i ->
+            val item = array.optJSONObject(i) ?: return@mapNotNull null
+            val id = item.optString("id")
+            if (id.isBlank()) return@mapNotNull null
+            val generos = item.optJSONArray("generos")?.let { a -> (0 until a.length()).map { a.optString(it) }.joinToString(", ") }
+                ?: item.optString("generos")
+            Serie(id, item.optString("publicId"), item.optString("titulo", "Manga"),
+                item.optString("autor"), item.optString("portadaUrl"),
+                item.optInt("totalCapitulos"), generos, false)
+        }.distinctBy { it.id }
+    }
+
+    private fun migrarFavoritosAlPerfil() {
+        if (preferencias.getBoolean("perfil_migrado_favoritos", false)) return
+        // Los favoritos anteriores se convierten en «Me gusta» para no perder la biblioteca.
+        favoritos.toList().forEach { id ->
+            val serie = catalogo.firstOrNull { it.id == id } ?: seriesGuardadas[id]
+            if (serie != null) guardarEstadoManga(serie, "Me gusta")
+        }
+        obtenerAnimesFavoritos().forEach { guardarEstadoAnime(it, "Me gusta") }
+        preferencias.edit().putBoolean("perfil_migrado_favoritos", true).apply()
+    }
+
+    private fun mostrarPerfil(categoriaInicial: String = "Me gusta") {
+        cancelarBusquedaManga()
+        generacionAnime++
+        mostrandoAnime = false
+        mostrandoDetalleAnime = false
+        mostrandoTodos = false
+        mostrandoFavoritos = true
+        mostrandoHistorial = false
+        lectorActivo = false
+        migrarFavoritosAlPerfil()
+
+        val raizPerfil = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(fondo)
+            setPadding(dp(16), dp(14), dp(16), dp(8))
+        }
+        raizPerfil.addView(TextView(this).apply {
+            text = "Mi perfil"
+            textSize = 26f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(textoColor)
+        })
+        raizPerfil.addView(TextView(this).apply {
+            text = "Tu biblioteca personal de anime y manga"
+            textSize = 13f
+            setTextColor(textoSecundario)
+            setPadding(0, dp(3), 0, dp(14))
+        })
+        val categorias = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        raizPerfil.addView(categorias)
+        val scroll = ScrollView(this).apply { isFillViewport = true; clipToPadding = false }
+        val lista = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(12), 0, dp(16)) }
+        scroll.addView(lista)
+        raizPerfil.addView(scroll, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        fun renderizar(categoria: String) {
+            categorias.removeAllViews()
+            lista.removeAllViews()
+            listOf("Me gusta", "Viendo", "Ver más tarde").forEach { cat ->
+                val boton = TextView(this).apply {
+                    text = when (cat) { "Me gusta" -> "♥  Me gusta"; "Viendo" -> "◉  Viendo"; else -> "◷  Ver más tarde" }
+                    textSize = 11f
+                    gravity = Gravity.CENTER
+                    setTypeface(null, Typeface.BOLD)
+                    setTextColor(Color.WHITE)
+                    setPadding(dp(8), dp(11), dp(8), dp(11))
+                    background = crearFondo(if (cat == categoria) acento else Color.rgb(43, 36, 56), 14)
+                    isClickable = true; isFocusable = true
+                    setOnClickListener { renderizar(cat) }
+                }
+                categorias.addView(boton, LinearLayout.LayoutParams(0, dp(44), 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
+            }
+            val mangas = obtenerMangasEstado(categoria)
+            val animes = obtenerAnimesEstado(categoria)
+            lista.addView(TextView(this).apply {
+                text = "MANGA  ·  ${mangas.size}"
+                textSize = 13f; typeface = Typeface.DEFAULT_BOLD; setTextColor(acento)
+                setPadding(dp(2), dp(6), 0, dp(9))
+            })
+            if (mangas.isEmpty()) lista.addView(TextView(this).apply {
+                text = "Todavía no hay mangas en «${categoria}»."
+                textSize = 13f; setTextColor(textoSecundario); setPadding(dp(4), dp(4), dp(4), dp(12))
+            })
+            mangas.forEach { serie ->
+                lista.addView(crearTarjetaPerfil(serie.titulo, serie.portadaUrl, "Manga", categoria) {
+                    mostrarSerie(serie)
+                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(8) })
+            }
+            lista.addView(TextView(this).apply {
+                text = "ANIME  ·  ${animes.size}"
+                textSize = 13f; typeface = Typeface.DEFAULT_BOLD; setTextColor(acento)
+                setPadding(dp(2), dp(12), 0, dp(9))
+            })
+            if (animes.isEmpty()) lista.addView(TextView(this).apply {
+                text = "Todavía no hay animes en «${categoria}»."
+                textSize = 13f; setTextColor(textoSecundario); setPadding(dp(4), dp(4), dp(4), dp(12))
+            })
+            animes.forEach { anime ->
+                lista.addView(crearTarjetaPerfil(anime.titulo, anime.portadaUrl.ifBlank { preferencias.getString("anime_portada_${anime.token}", "").orEmpty() }, "Anime", categoria) {
+                    mostrarDetalleAnime(anime)
+                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(8) })
+            }
+        }
+        val nav = NavigationBar(
+            context = this, acento = acento, textoSecundario = textoSecundario,
+            mostrandoTodos = false, mostrandoFavoritos = true, mostrandoHistorial = false,
+            mostrandoAnime = false, onInicio = { mostrarInicio() }, onMangas = { abrirTodosLosMangas() },
+            onFavoritos = { mostrarPerfil() }, onHistorial = { mostrarPantallaEspecial(false) },
+            onAnime = { mostrarAnime() }
+        )
+        raizPerfil.addView(nav, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(66)))
+        setContentView(raizPerfil)
+        renderizar(categoriaInicial)
+    }
+
+    private fun crearTarjetaPerfil(titulo: String, portadaUrl: String, tipo: String, categoria: String, alTocar: () -> Unit): View {
+        val fila = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(9), dp(9), dp(9), dp(9)); background = crearFondo(tarjeta, 13)
+            isClickable = true; isFocusable = true; setOnClickListener { alTocar() }
+        }
+        val portada = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            background = crearFondo(Color.rgb(39, 32, 49), 8)
+            contentDescription = "Portada de ${titulo}"
+            if (portadaUrl.isNotBlank()) load(portadaUrl) { crossfade(true); placeholder(crearFondo(tarjeta, 8)) }
+        }
+        fila.addView(portada, LinearLayout.LayoutParams(dp(68), dp(88)))
+        val datos = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(11), 0, dp(5), 0) }
+        datos.addView(TextView(this).apply { text = titulo; textSize = 14f; typeface = Typeface.DEFAULT_BOLD; setTextColor(textoColor); maxLines = 2 })
+        datos.addView(TextView(this).apply { text = tipo; textSize = 11f; setTextColor(textoSecundario); setPadding(0, dp(4), 0, dp(8)) })
+        datos.addView(TextView(this).apply {
+            text = "Mover de categoría  ▾"; textSize = 11f; setTextColor(acento)
+            isClickable = true; isFocusable = true
+            setOnClickListener {
+                val opciones = arrayOf("♥  Me gusta", "◉  Viendo", "◷  Ver más tarde", "Quitar del perfil")
+                AlertDialog.Builder(this@MainActivity).setTitle(titulo).setItems(opciones) { _, which ->
+                    val destino = when (which) { 0 -> "Me gusta"; 1 -> "Viendo"; 2 -> "Ver más tarde"; else -> null }
+                    if (tipo == "Anime") {
+                        val anime = (obtenerAnimesEstado(categoria) + animesDestacadosInicio + obtenerAnimesFavoritos()).firstOrNull { it.titulo == titulo }
+                        if (anime != null) guardarEstadoAnime(anime, destino)
+                    } else {
+                        val serie = obtenerMangasEstado(categoria).firstOrNull { it.titulo == titulo }
+                        if (serie != null) guardarEstadoManga(serie, destino)
+                    }
+                    renderizarPerfilDespuesDeCambio(categoria)
+                }.show()
+            }
+        })
+        fila.addView(datos, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        return fila
+    }
+
+    private fun renderizarPerfilDespuesDeCambio(categoria: String) {
+        mostrarPerfil(categoria)
+    }
+
     private fun mostrarPantallaEspecial(esFavoritos: Boolean) {
         mostrandoTodos = false
         mostrandoFavoritos = esFavoritos
