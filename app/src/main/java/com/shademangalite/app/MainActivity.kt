@@ -1569,6 +1569,17 @@ class MainActivity : Activity() {
 
             val ultimoTokenAnime = preferencias.getString("anime_ultimo_token", "").orEmpty()
             val ultimoNumeroAnime = preferencias.getInt("anime_ultimo_numero", 0)
+            val tituloUltimoAnime = runCatching {
+                val items = JSONArray(preferencias.getString("anime_historial", "[]").orEmpty())
+                (0 until items.length())
+                    .mapNotNull { items.optJSONObject(it) }
+                    .firstOrNull {
+                        it.optString("token") == ultimoTokenAnime &&
+                            it.optInt("episodio") == ultimoNumeroAnime
+                    }
+                    ?.optString("titulo")
+                    .orEmpty()
+            }.getOrDefault("")
             if (ultimoTokenAnime.isNotBlank() && ultimoNumeroAnime > 0) {
                 tituloSeccion("Seguí mirando")
                 val continuar = LinearLayout(this).apply {
@@ -1584,8 +1595,18 @@ class MainActivity : Activity() {
                     setTextColor(Color.rgb(185, 130, 255))
                     letterSpacing = 0.12f
                 })
-                info.addView(texto("Episodio $ultimoNumeroAnime", 15f, true).apply {
+                info.addView(texto(
+                    tituloUltimoAnime.ifBlank { "Episodio $ultimoNumeroAnime" },
+                    15f,
+                    true
+                ).apply {
                     setTextColor(Color.WHITE)
+                    maxLines = 2
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    setPadding(0, dp(3), 0, 0)
+                })
+                info.addView(texto("EPISODIO $ultimoNumeroAnime", 10f, false).apply {
+                    setTextColor(Color.rgb(174, 160, 193))
                     setPadding(0, dp(3), 0, 0)
                 })
                 continuar.addView(info, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
