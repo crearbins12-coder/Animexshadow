@@ -169,6 +169,18 @@ class MainActivity : Activity() {
         cargarCatalogo()
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val token = intent.getStringExtra("abrir_siguiente_token").orEmpty()
+        val numero = intent.getIntExtra("abrir_siguiente_numero", 0)
+        if (token.isNotBlank() && numero > 0) {
+            intent.removeExtra("abrir_siguiente_token")
+            intent.removeExtra("abrir_siguiente_numero")
+            reproducirEpisodioGuardado(token, numero)
+        }
+    }
+
     override fun onDestroy() {
         tareaGuardarProgreso?.let(manejadorProgreso::removeCallbacks)
         tareaGuardarProgreso = null
@@ -613,6 +625,42 @@ class MainActivity : Activity() {
         val raizAnime = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(fondo)
+            val filaAnime = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                setPadding(dp(10), dp(6), dp(10), dp(6))
+            }
+            val ultimoToken = preferencias.getString("anime_ultimo_token", "").orEmpty()
+            val ultimoNumero = preferencias.getInt("anime_ultimo_numero", 0)
+            if (ultimoToken.isNotBlank() && ultimoNumero > 0) {
+                filaAnime.addView(TextView(this@MainActivity).apply {
+                    text = "▶ Continuar ep. $ultimoNumero"
+                    textSize = 13f
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.WHITE)
+                    setPadding(dp(10), dp(10), dp(10), dp(10))
+                    background = crearFondo(acento, 10)
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener { reproducirEpisodioGuardado(ultimoToken, ultimoNumero) }
+                }, LinearLayout.LayoutParams(0, dp(44), 1f).apply {
+                    setMargins(0, 0, dp(6), 0)
+                })
+            }
+            filaAnime.addView(TextView(this@MainActivity).apply {
+                text = "Historial"
+                textSize = 13f
+                gravity = Gravity.CENTER
+                setTextColor(Color.WHITE)
+                setPadding(dp(10), dp(10), dp(10), dp(10))
+                background = crearFondo(Color.rgb(54, 42, 75), 10)
+                isClickable = true
+                isFocusable = true
+                setOnClickListener { mostrarHistorialAnime() }
+            }, LinearLayout.LayoutParams(0, dp(44), 1f))
+            addView(filaAnime, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ))
             addView(pantalla, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
             addView(NavigationBar(
                 context = this@MainActivity,
@@ -752,7 +800,16 @@ class MainActivity : Activity() {
                         return@runOnUiThread
                     }
                     val opciones = detalle.embeds.map { it.servidor + if (it.idioma.isNotBlank()) " · " + it.idioma else "" }.toTypedArray()
-                    AlertDialog.Builder(this).setTitle("Episodio " + episodio.numero + ": elegir servidor").setItems(opciones) { _, indice -> resolverYReproducirAnime(detalle.embeds, indice, anime.titulo + " · Episodio " + episodio.numero) }.setNegativeButton("Cancelar", null).show()
+                    AlertDialog.Builder(this).setTitle("Episodio " + episodio.numero + ": elegir servidor").setItems(opciones) { _, indice ->
+                        resolverYReproducirAnime(
+                            detalle.embeds,
+                            indice,
+                            anime.titulo + " · Episodio " + episodio.numero,
+                            anime.token,
+                            episodio.numero,
+                            episodio.numero + 1
+                        )
+                    }.setNegativeButton("Cancelar", null).show()
                 }
             } catch (e: Exception) {
                 runOnUiThread {
@@ -767,7 +824,10 @@ class MainActivity : Activity() {
     private fun resolverYReproducirAnime(
         embeds: List<AnimeEmbed>,
         indiceElegido: Int,
-        tituloEpisodio: String
+        tituloEpisodio: String,
+        animeToken: String,
+        numeroEpisodio: Int,
+        siguienteEpisodio: Int
     ) {
         if (embeds.isEmpty() || indiceElegido !in embeds.indices) {
             AlertDialog.Builder(this)
@@ -818,7 +878,7 @@ class MainActivity : Activity() {
                         AlertDialog.Builder(this)
                             .setMessage("El servidor elegido no entregó un enlace directo. Se usará ${servidor.servidor}.")
                             .setPositiveButton("Continuar") { _, _ ->
-                                abrirReproductorAnime(video, servidor, tituloEpisodio)
+                                abrirReproductorAnime(video, servidor, tituloEpisodio, animeToken, numeroEpisodio, siguienteEpisodio)
                             }
                             .setNegativeButton("Cancelar", null)
                             .show()
@@ -861,14 +921,81 @@ class MainActivity : Activity() {
     private fun abrirReproductorAnime(
         video: AnimeVideoResuelto,
         embed: AnimeEmbed,
-        tituloEpisodio: String
+        tituloEpisodio: String,
+        animeToken: String,
+        numeroEpisodio: Int,
+        siguienteEpisodio: Int
     ) {
         startActivity(Intent(this, AnimePlayerActivity::class.java).apply {
             putExtra(AnimePlayerActivity.EXTRA_URL, video.url)
             putExtra(AnimePlayerActivity.EXTRA_TIPO, video.tipo)
             putExtra(AnimePlayerActivity.EXTRA_TITULO, tituloEpisodio)
             putExtra(AnimePlayerActivity.EXTRA_SERVIDOR, embed.servidor)
+            putExtra(AnimePlayerActivity.EXTRA_ANIME_TOKEN, animeToken)
+            putExtra(AnimePlayerActivity.EXTRA_EPISODIO, numeroEpisodio)
+            putExtra(AnimePlayerActivity.EXTRA_SIGUIENTE, siguienteEpisodio)
         })
+    }
+
+    private fun reproducirEpisodioGuardado(token: String, numero: Int) {
+        val dialogo = AlertDialog.Builder(this)
+            .setMessage("Buscando episodio $numero…")
+            .setCancelable(false)
+            .create()
+        dialogo.show()
+        ejecutor.execute {
+            try {
+                val detalle = animeApi.obtenerDetalle(token, excluirAdultos = true)
+                val episodio = detalle.episodios.firstOrNull { it.numero == numero }
+                runOnUiThread {
+                    dialogo.dismiss()
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    if (episodio == null) {
+                        Toast.makeText(this, "Ese episodio ya no está disponible.", Toast.LENGTH_LONG).show()
+                    } else {
+                        animeActual = detalle.anime
+                        cargarEpisodioAnime(detalle.anime, episodio)
+                    }
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    dialogo.dismiss()
+                    if (!isFinishing && !isDestroyed) {
+                        Toast.makeText(this, "No se pudo recuperar el episodio: ${e.message ?: "error"}", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun mostrarHistorialAnime() {
+        val historial = runCatching {
+            org.json.JSONArray(preferencias.getString("anime_historial", "[]").orEmpty())
+        }.getOrElse { org.json.JSONArray() }
+        if (historial.length() == 0) {
+            AlertDialog.Builder(this)
+                .setTitle("Historial de anime")
+                .setMessage("Todavía no hay episodios en tu historial.")
+                .setPositiveButton("Aceptar", null)
+                .show()
+            return
+        }
+        val elementos = (0 until historial.length()).mapNotNull { i ->
+            historial.optJSONObject(i)?.let { item ->
+                Triple(
+                    "${item.optString("titulo", "Anime")}",
+                    item.optString("token"),
+                    item.optInt("episodio")
+                )
+            }
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Historial de anime")
+            .setItems(elementos.map { it.first }.toTypedArray()) { _, indice ->
+                elementos.getOrNull(indice)?.let { reproducirEpisodioGuardado(it.second, it.third) }
+            }
+            .setNegativeButton("Cerrar", null)
+            .show()
     }
 
     // =====================================================
