@@ -142,6 +142,13 @@ class VlcPlayerActivity : Activity() {
             // Ajustar el video al espacio disponible sin limitarlo a media pantalla.
             mp.setAspectRatio(null)
             mp.setScale(0f)
+            // Reaplicar el ajuste cuando Android ya haya medido la superficie de video.
+            // En algunos dispositivos, VLC calcula el tamaño antes de que el layout esté listo.
+            video.post {
+                video.requestLayout()
+                mp.setAspectRatio(null)
+                mp.setScale(0f)
+            }
             val media = Media(vlc, Uri.parse(url))
             media.setHWDecoderEnabled(true, false)
             media.addOption(":http-referrer=https://shademanga.com/")
