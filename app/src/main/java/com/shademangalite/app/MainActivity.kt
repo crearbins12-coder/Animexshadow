@@ -71,11 +71,23 @@ class MainActivity : Activity() {
     private val manejadorProgreso = Handler(Looper.getMainLooper())
     private var tareaGuardarProgreso: Runnable? = null
     private var busquedaMangaPendiente: Runnable? = null
-    private val cacheBusquedaManga = ConcurrentHashMap<String, List<Serie>>()
+    // Caché LRU de búsquedas: conserva los resultados usados recientemente.
+    private val cacheBusquedaManga =
+        object : LinkedHashMap<String, List<Serie>>(16, 0.75f, true) {
+            override fun removeEldestEntry(
+                eldest: MutableMap.MutableEntry<String, List<Serie>>?
+            ): Boolean = size > 40
+        }
     private val maxEntradasCacheBusqueda = 40
     // Cachés en memoria para que volver a una ficha o capítulo no repita la API.
     private val cacheCapitulosPorSerie = ConcurrentHashMap<String, List<Capitulo>>()
-    private val cachePaginasPorCapitulo = ConcurrentHashMap<String, List<String>>()
+    // LRU de páginas: prioriza capítulos recientes en vez de expulsar uno al azar.
+    private val cachePaginasPorCapitulo =
+        object : LinkedHashMap<String, List<String>>(16, 0.75f, true) {
+            override fun removeEldestEntry(
+                eldest: MutableMap.MutableEntry<String, List<String>>?
+            ): Boolean = size > 12
+        }
     private var mostrandoTodos = false
     private var resultadosVisibles = 21
 
@@ -1798,7 +1810,10 @@ class MainActivity : Activity() {
         registrarLectura(serie)
 
         val claveCachePaginas = "${serie.id}_${capitulo.id}"
-        cachePaginasPorCapitulo[claveCachePaginas]?.let { guardadas ->
+        val paginasEnCache = synchronized(cachePaginasPorCapitulo) {
+            cachePaginasPorCapitulo[claveCachePaginas]
+        }
+        paginasEnCache?.let { guardadas ->
             paginasActuales = guardadas
             mostrarPaginas(serie, capitulo, guardadas)
             return
@@ -1821,12 +1836,8 @@ class MainActivity : Activity() {
 
                 val paginas = mangaApi.analizarPaginas(objeto)
                 if (paginas.isNotEmpty()) {
-                    cachePaginasPorCapitulo[claveCachePaginas] = paginas
-                    while (cachePaginasPorCapitulo.size > 12) {
-                        val claveAntigua = cachePaginasPorCapitulo.keys
-                            .firstOrNull { it != claveCachePaginas }
-                            ?: break
-                        cachePaginasPorCapitulo.remove(claveAntigua)
+                    synchronized(cachePaginasPorCapitulo) {
+                        cachePaginasPorCapitulo[claveCachePaginas] = paginas
                     }
                 }
 
