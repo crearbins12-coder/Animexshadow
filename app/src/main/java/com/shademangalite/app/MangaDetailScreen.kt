@@ -45,7 +45,7 @@ fun construir(destino: LinearLayout) {
     val hero = FrameLayout(context).apply {
         background = crearFondo(Color.rgb(30, 23, 43), 18)
         clipToOutline = true
-        elevation = dp(3)
+        elevation = dp(3).toFloat()
     }
     val portada = ImageView(context).apply {
         scaleType = ImageView.ScaleType.CENTER_CROP
