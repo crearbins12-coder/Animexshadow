@@ -1249,6 +1249,13 @@ class MainActivity : Activity() {
             )
         }
 
+        espacio(8)
+        contenido.addView(
+            boton("🔎 Buscar en todo el catálogo") {
+                buscarEnTodoElCatalogo(filtroActual)
+            }
+        )
+
         if (hayMasCatalogo || cargandoMasCatalogo || errorCargaCatalogo) {
             espacio(8)
 
@@ -1257,13 +1264,80 @@ class MainActivity : Activity() {
                     when {
                         cargandoMasCatalogo -> "Cargando catálogo..."
                         errorCargaCatalogo -> "Reintentar carga de mangas"
-                        else -> "Buscar también en más mangas"
+                        else -> "Cargar la siguiente página"
                     }
                 ) {
                     errorCargaCatalogo = false
                     cargarMasCatalogo()
                 }
             )
+        }
+    }
+
+    private fun buscarEnTodoElCatalogo(consultaOriginal: String) {
+        val consulta = consultaOriginal.trim()
+        if (consulta.length < 2) {
+            mostrarAviso("Escribí al menos 2 letras para buscar en todo el catálogo.")
+            return
+        }
+
+        val dialogo = AlertDialog.Builder(this)
+            .setMessage("Buscando «$consulta» en todo el catálogo…")
+            .setCancelable(false)
+            .create()
+        dialogo.show()
+
+        val generacion = generacionCatalogo
+        ejecutor.execute {
+            try {
+                val encontrados = linkedMapOf<String, Serie>()
+                var pagina = 1
+                var continuar = true
+
+                while (continuar && pagina <= 200) {
+                    val respuesta = consultarApi(
+                        "/api/series-locales?pageSize=$tamanoPaginaCatalogo&page=$pagina"
+                    )
+                    val array = JSONArray(respuesta)
+                    val seriesPagina = analizarSeries(array)
+
+                    for (serie in seriesPagina) {
+                        if (
+                            serie.titulo.contains(consulta, ignoreCase = true) ||
+                            serie.autor.contains(consulta, ignoreCase = true) ||
+                            serie.genero.contains(consulta, ignoreCase = true)
+                        ) {
+                            encontrados[serie.id] = serie
+                        }
+                    }
+
+                    continuar = array.length() >= tamanoPaginaCatalogo
+                    pagina++
+                }
+
+                runOnUiThread {
+                    dialogo.dismiss()
+                    if (isFinishing || isDestroyed || generacion != generacionCatalogo) return@runOnUiThread
+
+                    for (serie in encontrados.values) {
+                        if (idsCatalogo.add(serie.id)) catalogo.add(serie)
+                    }
+
+                    filtroActual = consulta
+                    resultadosVisibles = max(resultadosVisibles, encontrados.size)
+                    mostrarCatalogoFiltrado()
+
+                    if (encontrados.isEmpty()) {
+                        mostrarAviso("No se encontró «$consulta» en las primeras 200 páginas del catálogo.")
+                    }
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    dialogo.dismiss()
+                    if (isFinishing || isDestroyed || generacion != generacionCatalogo) return@runOnUiThread
+                    mostrarAviso("No se pudo completar la búsqueda. ${e.message ?: "Error desconocido"}")
+                }
+            }
         }
     }
 
