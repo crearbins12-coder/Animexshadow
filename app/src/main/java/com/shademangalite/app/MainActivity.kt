@@ -2114,6 +2114,9 @@ class MainActivity : Activity() {
         pantalla: LinearLayout,
         paginas: List<String>
     ) {
+        // Cada ScrollView queda vinculado al capítulo/generación con que nació.
+        // Android puede entregar callbacks pendientes después de cambiar de capítulo.
+        val generacionScroll = generacionLector
         val scroll = object : ScrollView(this) {
             override fun onScrollChanged(
                 l: Int,
@@ -2122,6 +2125,12 @@ class MainActivity : Activity() {
                 oldt: Int
             ) {
                 super.onScrollChanged(l, t, oldl, oldt)
+
+                if (
+                    generacionScroll != generacionLector ||
+                    !lectorActivo ||
+                    paginas !== paginasActuales
+                ) return
 
                 val interior = getChildAt(0) ?: return
                 val distancia =
