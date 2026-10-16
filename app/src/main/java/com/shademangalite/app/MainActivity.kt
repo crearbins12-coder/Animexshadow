@@ -2412,6 +2412,9 @@ class MainActivity : Activity() {
         imagen.restablecerZoom()
 
         imagen.load(paginas[paginaActual]) {
+            // Mantiene el fondo oscuro mientras llega la imagen y si falla la descarga.
+            placeholder(android.graphics.drawable.ColorDrawable(Color.rgb(18, 18, 18)))
+            error(android.graphics.drawable.ColorDrawable(Color.rgb(38, 24, 30)))
             crossfade(false)
             memoryCachePolicy(CachePolicy.ENABLED)
             diskCachePolicy(CachePolicy.ENABLED)
