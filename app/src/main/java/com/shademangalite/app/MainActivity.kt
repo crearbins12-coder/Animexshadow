@@ -1232,8 +1232,19 @@ class MainActivity : Activity() {
                 return
             }
 
+            // Orden estable: mostrar primero las series con algo en curso y, dentro
+            // de cada serie, los episodios más recientes/numerados arriba.
             val grupos = filtrados.groupBy { it.token }
-            grupos.forEach { (_, episodiosSerie) ->
+                .values
+                .sortedWith(
+                    compareByDescending<List<EpisodioGuardado>> {
+                        it.any { episodio -> episodio.estado == "EN CURSO" }
+                    }.thenByDescending { serie ->
+                        serie.maxOfOrNull { it.numero } ?: 0
+                    }
+                )
+            grupos.forEach { episodiosOriginales ->
+                val episodiosSerie = episodiosOriginales.sortedByDescending { it.numero }
                 val principal = episodiosSerie.firstOrNull { it.estado == "EN CURSO" } ?: episodiosSerie.first()
                 val tarjetaSerie = LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
