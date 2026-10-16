@@ -897,6 +897,12 @@ class MainActivity : Activity() {
                 val detalle = animeApi.obtenerDetalle(anime.token, excluirAdultos = true)
                 runOnUiThread {
                     if (isFinishing || isDestroyed || generacion != generacionAnime || !mostrandoDetalleAnime) return@runOnUiThread
+                    // Guardar metadatos básicos para que Mis animes pueda recuperar la portada
+                    // aunque la serie ya no esté en destacados ni en favoritos.
+                    preferencias.edit()
+                        .putString("anime_portada_${detalle.anime.token}", detalle.anime.portadaUrl)
+                        .putString("anime_titulo_${detalle.anime.token}", detalle.anime.titulo)
+                        .apply()
                     pantalla.mostrarDetalle(detalle)
                 }
             } catch (e: Exception) {
@@ -1279,7 +1285,10 @@ class MainActivity : Activity() {
                     background = crearFondo(Color.rgb(38, 32, 48), 9)
                     clipToOutline = true
                     val anime = animesConocidos.firstOrNull { it.token == principal.token }
-                    if (!anime?.portadaUrl.isNullOrBlank()) load(anime?.portadaUrl)
+                    val portadaUrl = anime?.portadaUrl
+                        ?.takeIf { it.isNotBlank() }
+                        ?: preferencias.getString("anime_portada_${principal.token}", "").orEmpty()
+                    if (portadaUrl.isNotBlank()) load(portadaUrl)
                 }
                 tarjetaSerie.addView(portada, LinearLayout.LayoutParams(dp(76), dp(100)))
                 val datos = LinearLayout(this).apply {
