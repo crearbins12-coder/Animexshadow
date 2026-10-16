@@ -2537,25 +2537,31 @@ class MainActivity : Activity() {
     }
 
     private fun migrarFavoritosAlPerfil() {
-        if (preferencias.getBoolean("perfil_migrado_favoritos", false)) return
+        val migracionMangaCompleta = preferencias.getBoolean("perfil_migrado_favoritos", false)
+        val migracionAnimeCompleta = preferencias.getBoolean("perfil_migrado_favoritos_anime", false)
+        if (migracionMangaCompleta && migracionAnimeCompleta) return
 
-        // No marcar la migración como terminada si aún no podemos recuperar algún manga.
-        // Así se podrá reintentar cuando el catálogo o la caché local estén disponibles.
-        var quedanFavoritosPendientes = false
-        favoritos.toList().forEach { id ->
-            val serie = catalogo.firstOrNull { it.id == id } ?: seriesGuardadas[id]
-            if (serie != null) {
-                guardarEstadoManga(serie, "Me gusta")
-            } else {
-                quedanFavoritosPendientes = true
+        // La migración de mangas puede reintentarse si una obra aún no está en catálogo/caché.
+        // Mantenerla separada evita que los reintentos vuelvan a añadir anime que el usuario quitó.
+        if (!migracionMangaCompleta) {
+            var quedanFavoritosPendientes = false
+            favoritos.toList().forEach { id ->
+                val serie = catalogo.firstOrNull { it.id == id } ?: seriesGuardadas[id]
+                if (serie != null) {
+                    guardarEstadoManga(serie, "Me gusta")
+                } else {
+                    quedanFavoritosPendientes = true
+                }
+            }
+            if (!quedanFavoritosPendientes) {
+                preferencias.edit().putBoolean("perfil_migrado_favoritos", true).apply()
             }
         }
 
-        // Los datos de favoritos de anime ya están almacenados localmente.
-        obtenerAnimesFavoritos().forEach { guardarEstadoAnime(it, "Me gusta") }
-
-        if (!quedanFavoritosPendientes) {
-            preferencias.edit().putBoolean("perfil_migrado_favoritos", true).apply()
+        // Migrar anime una sola vez: no volver a restaurar favoritos antiguos después de quitarlos.
+        if (!migracionAnimeCompleta) {
+            obtenerAnimesFavoritos().forEach { guardarEstadoAnime(it, "Me gusta") }
+            preferencias.edit().putBoolean("perfil_migrado_favoritos_anime", true).apply()
         }
     }
 
