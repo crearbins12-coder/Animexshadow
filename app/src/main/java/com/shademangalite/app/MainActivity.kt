@@ -1099,6 +1099,13 @@ class MainActivity : Activity() {
     }
 
     private fun mostrarHistorialAnime() {
+        data class EpisodioGuardado(
+            val etiqueta: String,
+            val token: String,
+            val numero: Int,
+            val estado: String
+        )
+
         val historial = runCatching {
             JSONArray(preferencias.getString("anime_historial", "[]").orEmpty())
         }.getOrElse { JSONArray() }
@@ -1120,48 +1127,71 @@ class MainActivity : Activity() {
                 } else 0
                 val estado = when {
                     vistos || porcentaje >= 90 -> "TERMINADO"
-                    porcentaje > 0 -> "EN CURSO · $porcentaje%"
+                    porcentaje > 0 -> "EN CURSO"
                     else -> "PENDIENTE"
                 }
-                Triple(
-                    "${item.optString("titulo").ifBlank { "Anime" }} · Ep. $episodio\n$estado",
+                EpisodioGuardado(
+                    "${item.optString("titulo").ifBlank { "Anime" }} · Ep. ${episodio}\n${if (estado == "EN CURSO") "EN CURSO · $porcentaje%" else estado}",
                     token,
-                    episodio
+                    episodio,
+                    estado
                 )
             }
         }
 
-        val builder = AlertDialog.Builder(this)
-            .setTitle("Historial de anime")
         if (elementos.isEmpty()) {
-            builder.setMessage("Todavía no hay episodios en tu historial.")
+            AlertDialog.Builder(this)
+                .setTitle("Mis animes")
+                .setMessage("Todavía no hay episodios en tu historial. Reproducí algún episodio para que aparezca acá.")
                 .setPositiveButton("Aceptar", null)
                 .show()
             return
         }
 
-        builder.setItems(elementos.map { it.first }.toTypedArray()) { _, indice ->
-            elementos.getOrNull(indice)?.let { reproducirEpisodioGuardado(it.second, it.third) }
-        }
-        builder.setNeutralButton("Limpiar historial") { _, _ ->
-            AlertDialog.Builder(this)
-                .setTitle("¿Limpiar el historial?")
-                .setMessage("Se quitarán los episodios recientes y el acceso rápido de «Seguí mirando». Tus favoritos y episodios marcados como vistos se conservarán.")
-                .setNegativeButton("Cancelar", null)
-                .setPositiveButton("Limpiar") { _, _ ->
-                    preferencias.edit()
-                        .putString("anime_historial", "[]")
-                        .remove("anime_ultimo_token")
-                        .remove("anime_ultimo_numero")
-                        .remove("anime_ultimo_siguiente")
-                        .apply()
-                    Toast.makeText(this, "Historial limpiado", Toast.LENGTH_SHORT).show()
-                    mostrarInicio()
+        val filtros = arrayOf("Todos", "En curso", "Terminados", "Pendientes")
+        AlertDialog.Builder(this)
+            .setTitle("Mis animes · Filtrar")
+            .setItems(filtros) { _, indice ->
+                val estadoFiltro = when (indice) {
+                    1 -> "EN CURSO"
+                    2 -> "TERMINADO"
+                    3 -> "PENDIENTE"
+                    else -> ""
                 }
-                .show()
-        }
-        builder.setNegativeButton("Cerrar", null)
-        builder.show()
+                val filtrados = elementos.filter { estadoFiltro.isBlank() || it.estado == estadoFiltro }
+                val listaBuilder = AlertDialog.Builder(this)
+                    .setTitle("${filtros[indice]} (${filtrados.size})")
+                if (filtrados.isEmpty()) {
+                    listaBuilder.setMessage("No hay episodios en esta categoría todavía.")
+                } else {
+                    listaBuilder.setItems(filtrados.map { it.etiqueta }.toTypedArray()) { _, elegido ->
+                        filtrados.getOrNull(elegido)?.let {
+                            reproducirEpisodioGuardado(it.token, it.numero)
+                        }
+                    }
+                }
+                listaBuilder.setNeutralButton("Limpiar historial") { _, _ ->
+                    AlertDialog.Builder(this)
+                        .setTitle("¿Limpiar el historial?")
+                        .setMessage("Se quitarán los episodios recientes y el acceso rápido de «Seguí mirando». Tus favoritos y episodios marcados como vistos se conservarán.")
+                        .setNegativeButton("Cancelar", null)
+                        .setPositiveButton("Limpiar") { _, _ ->
+                            preferencias.edit()
+                                .putString("anime_historial", "[]")
+                                .remove("anime_ultimo_token")
+                                .remove("anime_ultimo_numero")
+                                .remove("anime_ultimo_siguiente")
+                                .apply()
+                            Toast.makeText(this, "Historial limpiado", Toast.LENGTH_SHORT).show()
+                            mostrarInicio()
+                        }
+                        .show()
+                }
+                listaBuilder.setNegativeButton("Volver") { _, _ -> mostrarHistorialAnime() }
+                listaBuilder.show()
+            }
+            .setNegativeButton("Cerrar", null)
+            .show()
     }
 
     // =====================================================
