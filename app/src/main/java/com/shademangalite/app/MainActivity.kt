@@ -2537,10 +2537,40 @@ class MainActivity : Activity() {
 
         fun restablecerZoom() {
             escalaActual = 1f
-            matriz.reset()
-            imageMatrix = matriz
+            ajustarImagenAlContenedor()
             gestoMultitactil = false
             arrastrando = false
+        }
+
+        override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+            super.onSizeChanged(w, h, oldw, oldh)
+            if (w > 0 && h > 0 && (oldw != w || oldh != h)) {
+                ajustarImagenAlContenedor()
+            }
+        }
+
+        override fun setImageDrawable(drawable: android.graphics.drawable.Drawable?) {
+            super.setImageDrawable(drawable)
+            post { ajustarImagenAlContenedor() }
+        }
+
+        private fun ajustarImagenAlContenedor() {
+            val imagen = drawable ?: return
+            if (width <= 0 || height <= 0 ||
+                imagen.intrinsicWidth <= 0 || imagen.intrinsicHeight <= 0
+            ) return
+
+            escalaActual = 1f
+            matriz.reset()
+            val escalaBase = min(
+                width.toFloat() / imagen.intrinsicWidth.toFloat(),
+                height.toFloat() / imagen.intrinsicHeight.toFloat()
+            )
+            val dx = (width - imagen.intrinsicWidth * escalaBase) / 2f
+            val dy = (height - imagen.intrinsicHeight * escalaBase) / 2f
+            matriz.setScale(escalaBase, escalaBase)
+            matriz.postTranslate(dx, dy)
+            imageMatrix = matriz
         }
 
         override fun onTouchEvent(event: MotionEvent): Boolean {
