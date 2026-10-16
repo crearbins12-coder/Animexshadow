@@ -677,6 +677,28 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ))
+            addView(TextView(this@MainActivity).apply {
+                text = "Priorizar progreso (reproductor interno)"
+                textSize = 12f
+                gravity = Gravity.CENTER
+                setTextColor(Color.WHITE)
+                setPadding(dp(10), dp(8), dp(10), dp(8))
+                background = crearFondo(Color.rgb(44, 55, 70), 8)
+                isClickable = true
+                isFocusable = true
+                setOnClickListener {
+                    getSharedPreferences("animex_player_settings", MODE_PRIVATE)
+                        .edit().putBoolean("usar_vlc_siempre", false).apply()
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Listo: se usará el reproductor interno para guardar el minuto.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { setMargins(dp(10), 0, dp(10), dp(6)) })
             addView(pantalla, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
             addView(NavigationBar(
                 context = this@MainActivity,
