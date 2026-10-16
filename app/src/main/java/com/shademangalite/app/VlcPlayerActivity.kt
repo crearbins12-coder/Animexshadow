@@ -139,6 +139,9 @@ class VlcPlayerActivity : Activity() {
             val mp = MediaPlayer(vlc)
             mediaPlayer = mp
             mp.attachViews(video, null, false, false)
+            // Ajustar el video al espacio disponible sin limitarlo a media pantalla.
+            mp.setAspectRatio(null)
+            mp.setScale(0f)
             val media = Media(vlc, Uri.parse(url))
             media.setHWDecoderEnabled(true, false)
             media.addOption(":http-referrer=https://shademanga.com/")
