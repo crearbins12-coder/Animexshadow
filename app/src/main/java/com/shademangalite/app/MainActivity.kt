@@ -2775,7 +2775,9 @@ class MainActivity : Activity() {
             text = "↔  Mover de categoría"
             textSize = 11f
             setTextColor(acento)
-            setPadding(0, dp(2), 0, dp(5))
+            setPadding(dp(4), dp(8), dp(4), dp(8))
+            minHeight = dp(40)
+            contentDescription = "Mover $titulo a otra categoría"
             isClickable = true
             isFocusable = true
             setOnClickListener {
@@ -2813,6 +2815,9 @@ class MainActivity : Activity() {
             text = "✕  Quitar del perfil"
             textSize = 11f
             setTextColor(Color.rgb(255, 125, 145))
+            setPadding(dp(4), dp(8), dp(4), dp(8))
+            minHeight = dp(40)
+            contentDescription = "Quitar $titulo del perfil"
             isClickable = true
             isFocusable = true
             setOnClickListener {
