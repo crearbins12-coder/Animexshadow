@@ -420,7 +420,7 @@ class MainActivity : Activity() {
                                 }
                             }
                             busquedaMangaPendiente = tarea
-                            manejadorBusquedaManga.postDelayed(tarea, 900L)
+                            manejadorBusquedaManga.postDelayed(tarea, 400L)
                         }
                     }
 
