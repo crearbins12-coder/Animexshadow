@@ -8,6 +8,8 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -60,6 +62,8 @@ class MainActivity : Activity() {
     private var capitulosActuales = mutableListOf<Capitulo>()
 
     private var filtroActual = ""
+    private val manejadorBusquedaManga = Handler(Looper.getMainLooper())
+    private var busquedaMangaPendiente: Runnable? = null
     private var mostrandoTodos = false
     private var resultadosVisibles = 21
 
@@ -361,6 +365,20 @@ class MainActivity : Activity() {
                         filtroActual = s?.toString().orEmpty()
                         resultadosVisibles = 21
                         mostrarCatalogoFiltrado()
+
+                        // Busca también en las páginas que aún no se cargaron,
+                        // sin lanzar una petición por cada tecla.
+                        busquedaMangaPendiente?.let(manejadorBusquedaManga::removeCallbacks)
+                        val consulta = filtroActual.trim()
+                        if (consulta.length >= 2) {
+                            val tarea = Runnable {
+                                if (consulta == filtroActual.trim() && !mostrandoAnime && !mostrandoDetalleAnime) {
+                                    buscarEnTodoElCatalogo(consulta)
+                                }
+                            }
+                            busquedaMangaPendiente = tarea
+                            manejadorBusquedaManga.postDelayed(tarea, 900L)
+                        }
                     }
 
                     override fun afterTextChanged(s: Editable?) = Unit
@@ -1290,7 +1308,7 @@ class MainActivity : Activity() {
 
         val dialogo = AlertDialog.Builder(this)
             .setMessage("Buscando «$consulta» en todo el catálogo…")
-            .setCancelable(false)
+            .setCancelable(true)
             .create()
         dialogo.show()
 
