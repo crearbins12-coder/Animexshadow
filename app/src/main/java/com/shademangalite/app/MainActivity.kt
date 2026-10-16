@@ -140,6 +140,7 @@ class MainActivity : Activity() {
     private var capituloLector: Capitulo? = null
 
     private var raizAnteriorLector: View? = null
+    private var contenidoAnteriorLector: LinearLayout? = null
 
     private var contenedorLector: LinearLayout? = null
     private var scrollLector: ScrollView? = null
@@ -1789,6 +1790,7 @@ class MainActivity : Activity() {
 
         if (!lectorActivo) {
             raizAnteriorLector = raiz
+            contenidoAnteriorLector = contenido
         }
 
         serieLector = serie
@@ -1965,6 +1967,43 @@ class MainActivity : Activity() {
         )
 
         pantalla.addView(barra)
+
+        // Navegación entre capítulos sin tener que salir a la lista.
+        val indiceCapitulo = capitulosActuales.indexOfFirst { it.id == capitulo.id }
+        val navegacionCapitulos = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(dp(6), dp(4), dp(6), dp(4))
+            setBackgroundColor(Color.rgb(20, 16, 30))
+        }
+
+        val botonCapituloAnterior = boton("‹ Cap. anterior") {
+            navegarCapitulo(-1)
+        }
+        botonCapituloAnterior.isEnabled = indiceCapitulo > 0
+        botonCapituloAnterior.alpha = if (indiceCapitulo > 0) 1f else 0.45f
+
+        val botonCapituloSiguiente = boton("Cap. siguiente ›") {
+            navegarCapitulo(1)
+        }
+        botonCapituloSiguiente.isEnabled =
+            indiceCapitulo >= 0 && indiceCapitulo < capitulosActuales.lastIndex
+        botonCapituloSiguiente.alpha =
+            if (botonCapituloSiguiente.isEnabled) 1f else 0.45f
+
+        navegacionCapitulos.addView(
+            botonCapituloAnterior,
+            LinearLayout.LayoutParams(0, dp(40), 1f).apply {
+                marginEnd = dp(4)
+            }
+        )
+        navegacionCapitulos.addView(
+            botonCapituloSiguiente,
+            LinearLayout.LayoutParams(0, dp(40), 1f).apply {
+                marginStart = dp(4)
+            }
+        )
+        pantalla.addView(navegacionCapitulos)
 
         if (modoLectura == "vertical") {
             construirLectorVertical(pantalla, paginas)
@@ -2326,6 +2365,17 @@ class MainActivity : Activity() {
             "Página ${paginaActual + 1} de $total"
     }
 
+    private fun navegarCapitulo(desplazamiento: Int) {
+        val serie = serieLector ?: return
+        val capitulo = capituloLector ?: return
+        val indice = capitulosActuales.indexOfFirst { it.id == capitulo.id }
+        if (indice < 0) return
+
+        val destino = capitulosActuales.getOrNull(indice + desplazamiento) ?: return
+        guardarProgreso()
+        mostrarLector(serie, destino)
+    }
+
     // =====================================================
     // SALIR DEL LECTOR Y PANTALLA COMPLETA
     // =====================================================
@@ -2343,7 +2393,19 @@ class MainActivity : Activity() {
             return
         }
 
+        // El lector usa setContentView(pantalla), así que hay que restaurar
+        // explícitamente la pantalla y el contenedor que estaban antes.
+        val pantallaAnterior = raizAnteriorLector as? LinearLayout
+        val contenidoAnterior = contenidoAnteriorLector
+        if (pantallaAnterior != null && contenidoAnterior != null) {
+            raiz = pantallaAnterior
+            contenido = contenidoAnterior
+        }
+
         mostrarListaCapitulos(serie, capitulosActuales)
+        setContentView(raiz)
+        raizAnteriorLector = null
+        contenidoAnteriorLector = null
     }
 
     @Suppress("DEPRECATION")
