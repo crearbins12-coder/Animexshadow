@@ -2203,8 +2203,11 @@ class MainActivity : Activity() {
 
     private fun cargarSiguienteLoteVertical(paginas: List<String>) {
         val columna = contenedorLector ?: return
+        val generacion = generacionLector
 
         if (
+            !lectorActivo ||
+            paginas !== paginasActuales ||
             cargandoPaginasVerticales ||
             indiceCargaVertical >= paginas.size
         ) return
@@ -2245,6 +2248,13 @@ class MainActivity : Activity() {
         actualizarTextoProgreso(paginas.size)
 
         columna.post {
+            // Una carga diferida de un capítulo anterior no debe tocar el lector nuevo.
+            if (
+                generacion != generacionLector ||
+                columna !== contenedorLector ||
+                !lectorActivo
+            ) return@post
+
             val scroll = scrollLector ?: return@post
 
             if (restauracionVerticalPendiente) {
