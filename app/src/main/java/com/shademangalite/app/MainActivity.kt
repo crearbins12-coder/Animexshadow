@@ -2780,14 +2780,30 @@ class MainActivity : Activity() {
                 val opciones = arrayOf("♥  Me gusta", "◉  Viendo", "◷  Ver más tarde", "Quitar del perfil")
                 AlertDialog.Builder(this@MainActivity).setTitle(titulo).setItems(opciones) { _, which ->
                     val destino = when (which) { 0 -> "Me gusta"; 1 -> "Viendo"; 2 -> "Ver más tarde"; else -> null }
+                    var encontrada = false
                     if (tipo == "Anime") {
                         val anime = (obtenerAnimesEstado(categoria) + animesDestacadosInicio + obtenerAnimesFavoritos()).firstOrNull { it.token == idObra }
-                        if (anime != null) guardarEstadoAnime(anime, destino)
+                        if (anime != null) {
+                            guardarEstadoAnime(anime, destino)
+                            encontrada = true
+                        }
                     } else {
                         val serie = obtenerMangasEstado(categoria).firstOrNull { it.id == idObra }
-                        if (serie != null) guardarEstadoManga(serie, destino)
+                        if (serie != null) {
+                            guardarEstadoManga(serie, destino)
+                            encontrada = true
+                        }
                     }
-                    renderizarPerfilDespuesDeCambio(categoria)
+                    if (encontrada) {
+                        renderizarPerfilDespuesDeCambio(categoria)
+                        Toast.makeText(
+                            this@MainActivity,
+                            if (destino == null) "Quitado del perfil" else "Categoría actualizada",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    } else {
+                        Toast.makeText(this@MainActivity, "No se encontró la obra; actualizá el perfil e intentá otra vez", Toast.LENGTH_LONG).show()
+                    }
                 }.show()
             }
         })
@@ -2803,15 +2819,27 @@ class MainActivity : Activity() {
                     .setMessage("Se eliminará de «${categoria}». La obra no se borrará del catálogo.")
                     .setNegativeButton("Cancelar", null)
                     .setPositiveButton("Quitar") { _, _ ->
+                        var quitada = false
                         if (tipo == "Anime") {
                             val anime = obtenerAnimesEstado(categoria).firstOrNull { it.token == idObra }
-                            if (anime != null) guardarEstadoAnime(anime, null)
+                            if (anime != null) {
+                                guardarEstadoAnime(anime, null)
+                                quitada = true
+                            }
                         } else {
                             val serie = obtenerMangasEstado(categoria).firstOrNull { it.id == idObra }
-                            if (serie != null) guardarEstadoManga(serie, null)
+                            if (serie != null) {
+                                guardarEstadoManga(serie, null)
+                                quitada = true
+                            }
                         }
-                        renderizarPerfilDespuesDeCambio(categoria)
-                        Toast.makeText(this@MainActivity, "Quitado del perfil", Toast.LENGTH_SHORT).show()
+                        if (quitada) {
+                            renderizarPerfilDespuesDeCambio(categoria)
+                            Toast.makeText(this@MainActivity, "Quitado del perfil", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(this@MainActivity, "La obra ya no está en esta categoría", Toast.LENGTH_LONG).show()
+                            renderizarPerfilDespuesDeCambio(categoria)
+                        }
                     }
                     .show()
             }
