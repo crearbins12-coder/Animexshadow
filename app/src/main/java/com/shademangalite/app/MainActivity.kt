@@ -2663,8 +2663,12 @@ class MainActivity : Activity() {
         datos.addView(TextView(this).apply { text = titulo; textSize = 14f; typeface = Typeface.DEFAULT_BOLD; setTextColor(textoColor); maxLines = 2 })
         datos.addView(TextView(this).apply { text = tipo; textSize = 11f; setTextColor(textoSecundario); setPadding(0, dp(4), 0, dp(8)) })
         datos.addView(TextView(this).apply {
-            text = "Mover de categoría  ▾"; textSize = 11f; setTextColor(acento)
-            isClickable = true; isFocusable = true
+            text = "↔  Mover de categoría"
+            textSize = 11f
+            setTextColor(acento)
+            setPadding(0, dp(2), 0, dp(5))
+            isClickable = true
+            isFocusable = true
             setOnClickListener {
                 val opciones = arrayOf("♥  Me gusta", "◉  Viendo", "◷  Ver más tarde", "Quitar del perfil")
                 AlertDialog.Builder(this@MainActivity).setTitle(titulo).setItems(opciones) { _, which ->
@@ -2678,6 +2682,31 @@ class MainActivity : Activity() {
                     }
                     renderizarPerfilDespuesDeCambio(categoria)
                 }.show()
+            }
+        })
+        datos.addView(TextView(this).apply {
+            text = "✕  Quitar del perfil"
+            textSize = 11f
+            setTextColor(Color.rgb(255, 125, 145))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle("Quitar ${titulo}?")
+                    .setMessage("Se eliminará de «${categoria}». La obra no se borrará del catálogo.")
+                    .setNegativeButton("Cancelar", null)
+                    .setPositiveButton("Quitar") { _, _ ->
+                        if (tipo == "Anime") {
+                            val anime = obtenerAnimesEstado(categoria).firstOrNull { it.token == idObra }
+                            if (anime != null) guardarEstadoAnime(anime, null)
+                        } else {
+                            val serie = obtenerMangasEstado(categoria).firstOrNull { it.id == idObra }
+                            if (serie != null) guardarEstadoManga(serie, null)
+                        }
+                        renderizarPerfilDespuesDeCambio(categoria)
+                        Toast.makeText(this@MainActivity, "Quitado del perfil", Toast.LENGTH_SHORT).show()
+                    }
+                    .show()
             }
         })
         fila.addView(datos, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
