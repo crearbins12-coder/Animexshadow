@@ -136,6 +136,8 @@ class MainActivity : Activity() {
     private var tipoAnime = ""
     private var estadoAnime = ""
     private var listaAnimeActual = mutableListOf<Anime>()
+    private var animesDestacadosInicio = mutableListOf<Anime>()
+    private var generacionInicioAnime = 0
     private var cargandoMasAnime = false
 
     private var lectorActivo = false
@@ -188,6 +190,7 @@ class MainActivity : Activity() {
         if (lectorActivo) guardarProgreso()
         generacionCatalogo++
         generacionAnime++
+        generacionInicioAnime++
         generacionLector++
         ejecutor.shutdownNow()
         cancelarBusquedaManga()
@@ -386,6 +389,7 @@ class MainActivity : Activity() {
 
         construirPantalla("AnimexShadow", true)
         mostrarCatalogoFiltrado()
+        cargarAnimeDestacadosInicio()
     }
 
     private fun construirPantalla(
@@ -1308,6 +1312,184 @@ class MainActivity : Activity() {
     // CATÁLOGO PRINCIPAL
     // =====================================================
 
+
+    private fun cargarAnimeDestacadosInicio() {
+        val generacion = ++generacionInicioAnime
+        ejecutor.execute {
+            try {
+                val resultado = animeApi.obtenerCatalogo(
+                    pagina = 1,
+                    tamanoPagina = 12,
+                    excluirAdultos = true
+                )
+                runOnUiThread {
+                    if (
+                        isFinishing || isDestroyed ||
+                        generacion != generacionInicioAnime ||
+                        mostrandoAnime || mostrandoDetalleAnime ||
+                        mostrandoTodos || mostrandoFavoritos || mostrandoHistorial ||
+                        filtroActual.isNotBlank()
+                    ) return@runOnUiThread
+                    animesDestacadosInicio = resultado.items.toMutableList()
+                    if (::contenido.isInitialized) mostrarCatalogoFiltrado()
+                }
+            } catch (_: Exception) {
+                // Si la API de anime no responde, la portada de manga sigue disponible.
+            }
+        }
+    }
+
+    private fun crearHeroAnime(anime: Anime): View {
+        val hero = FrameLayout(this).apply {
+            background = crearFondo(Color.rgb(30, 22, 45), 22)
+            clipToOutline = true
+            elevation = dp(3).toFloat()
+        }
+
+        val portada = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            contentDescription = "Portada de ${anime.titulo}"
+            if (anime.portadaUrl.isNotBlank()) {
+                load(anime.portadaUrl) {
+                    crossfade(true)
+                    memoryCachePolicy(CachePolicy.ENABLED)
+                    diskCachePolicy(CachePolicy.ENABLED)
+                    precision(Precision.INEXACT)
+                    scale(Scale.FILL)
+                }
+            }
+        }
+        hero.addView(
+            portada,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        )
+
+        val sombra = View(this).apply {
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(
+                    Color.argb(15, 5, 4, 10),
+                    Color.argb(115, 5, 4, 10),
+                    Color.argb(245, 5, 4, 10)
+                )
+            )
+        }
+        hero.addView(
+            sombra,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        )
+
+        val datos = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.BOTTOM
+            setPadding(dp(16), dp(18), dp(16), dp(16))
+        }
+        datos.addView(TextView(this).apply {
+            text = "✦  ANIME DESTACADO"
+            textSize = 10f
+            letterSpacing = 0.1f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.rgb(220, 180, 255))
+            setPadding(dp(9), dp(6), dp(9), dp(6))
+            background = crearFondo(Color.argb(190, 57, 32, 83), 8)
+        })
+        datos.addView(texto(anime.titulo, 24f, true).apply {
+            setTextColor(Color.WHITE)
+            maxLines = 2
+            setShadowLayer(8f, 0f, 2f, Color.BLACK)
+            setPadding(0, dp(8), 0, dp(4))
+        })
+        val meta = listOf(anime.tipo, anime.estado, anime.generos)
+            .filter { it.isNotBlank() }
+            .joinToString("  ·  ")
+        if (meta.isNotBlank()) {
+            datos.addView(texto(meta, 11f, false).apply {
+                setTextColor(Color.rgb(226, 220, 237))
+                maxLines = 2
+            })
+        }
+        val ver = TextView(this).apply {
+            text = "▶   Ver anime"
+            textSize = 13f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            background = crearFondo(acento, 12)
+            setPadding(dp(16), dp(11), dp(16), dp(11))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { mostrarDetalleAnime(anime) }
+        }
+        datos.addView(ver, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT, dp(42)
+        ).apply { topMargin = dp(10) })
+        hero.addView(
+            datos,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                Gravity.BOTTOM
+            )
+        )
+        return hero
+    }
+
+    private fun agregarCarruselAnime(animes: List<Anime>) {
+        if (animes.isEmpty()) return
+
+        val horizontal = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            clipToPadding = false
+            setPadding(0, dp(2), 0, dp(5))
+        }
+        val fila = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        animes.forEach { anime ->
+            val tarjetaAnime = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                isClickable = true
+                isFocusable = true
+                setOnClickListener { mostrarDetalleAnime(anime) }
+            }
+            val marco = FrameLayout(this).apply {
+                background = crearFondo(Color.rgb(35, 29, 49), 13)
+                clipToOutline = true
+            }
+            val imagen = ImageView(this).apply {
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                contentDescription = anime.titulo
+                if (anime.portadaUrl.isNotBlank()) {
+                    load(anime.portadaUrl) {
+                        crossfade(true)
+                        memoryCachePolicy(CachePolicy.ENABLED)
+                        diskCachePolicy(CachePolicy.ENABLED)
+                        precision(Precision.INEXACT)
+                        scale(Scale.FILL)
+                    }
+                }
+            }
+            marco.addView(imagen, FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
+            ))
+            tarjetaAnime.addView(marco, LinearLayout.LayoutParams(dp(132), dp(184)))
+            tarjetaAnime.addView(texto(anime.titulo, 12f, true).apply {
+                setTextColor(Color.WHITE)
+                maxLines = 2
+                setPadding(dp(2), dp(7), dp(2), 0)
+            })
+            fila.addView(tarjetaAnime, LinearLayout.LayoutParams(
+                dp(132), LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { marginEnd = dp(10) })
+        }
+        horizontal.addView(fila)
+        contenido.addView(horizontal)
+    }
+
     private fun mostrarCatalogoFiltrado() {
         if (lectorActivo || !::contenido.isInitialized) return
 
@@ -1347,12 +1529,12 @@ class MainActivity : Activity() {
         }
 
         // Inicio organizado como el catálogo web de ShadeManga: populares, novedades y géneros.
-        contenido.addView(texto("Leer manga online gratis en español", 22f, true).apply {
+        contenido.addView(texto("Tu universo otaku, en un solo lugar", 22f, true).apply {
             setTextColor(Color.WHITE)
         })
         espacio(6)
         contenido.addView(texto(
-            "Explorá manga, manhwa y manhua; encontrá una serie y entrá directo a su ficha.",
+            "Descubrí anime para maratonear y manga para seguir la historia.",
             13f, false
         ).apply { setTextColor(textoSecundario) })
         espacio(14)
@@ -1382,8 +1564,25 @@ class MainActivity : Activity() {
             espacio(9)
         }
 
+        // Portada destacada y carrusel real de anime, con imágenes de la API.
+        if (animesDestacadosInicio.isNotEmpty()) {
+            contenido.addView(crearHeroAnime(animesDestacadosInicio.first()))
+            espacio(18)
+            tituloSeccion("Anime para maratonear", "Ver todos  ›")
+            agregarCarruselAnime(animesDestacadosInicio)
+            espacio(22)
+        } else {
+            contenido.addView(
+                texto("✦  ANIME Y MANGA, A TU MANERA", 12f, true).apply {
+                    setTextColor(acento)
+                    letterSpacing = 0.08f
+                }
+            )
+            espacio(14)
+        }
+
         // El orden recibido por el catálogo se conserva; no se inventan puntuaciones.
-        tituloSeccion("Populares", "Ver todos  ›")
+        tituloSeccion("Mangas populares", "Ver todos  ›")
         agregarCarrusel(lista.take(15))
         espacio(20)
 
