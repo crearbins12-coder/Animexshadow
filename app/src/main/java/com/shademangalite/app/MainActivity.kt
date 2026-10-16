@@ -73,6 +73,9 @@ class MainActivity : Activity() {
     private var busquedaMangaPendiente: Runnable? = null
     private val cacheBusquedaManga = ConcurrentHashMap<String, List<Serie>>()
     private val maxEntradasCacheBusqueda = 40
+    // Cachés en memoria para que volver a una ficha o capítulo no repita la API.
+    private val cacheCapitulosPorSerie = ConcurrentHashMap<String, List<Capitulo>>()
+    private val cachePaginasPorCapitulo = ConcurrentHashMap<String, List<String>>()
     private var mostrandoTodos = false
     private var resultadosVisibles = 21
 
@@ -1652,6 +1655,13 @@ class MainActivity : Activity() {
     private fun mostrarSerie(serie: Serie) {
         cancelarBusquedaManga()
         serieActual = serie
+
+        cacheCapitulosPorSerie[serie.id]?.let { guardados ->
+            capitulosActuales = guardados.toMutableList()
+            mostrarListaCapitulos(serie, guardados)
+            return
+        }
+
         mostrarPantallaCarga("Cargando capítulos...")
 
         val generacion = generacionCatalogo
@@ -1664,6 +1674,12 @@ class MainActivity : Activity() {
 
                 val array = JSONArray(respuesta)
                 val resultado = mangaApi.analizarCapitulos(array).toMutableList()
+                cacheCapitulosPorSerie[serie.id] = resultado
+                while (cacheCapitulosPorSerie.size > 50) {
+                    val claveAntigua = cacheCapitulosPorSerie.keys.firstOrNull { it != serie.id }
+                        ?: break
+                    cacheCapitulosPorSerie.remove(claveAntigua)
+                }
 
                 runOnUiThread {
                     if (
@@ -1744,6 +1760,14 @@ class MainActivity : Activity() {
         serieLector = serie
         capituloLector = capitulo
         registrarLectura(serie)
+
+        val claveCachePaginas = "${serie.id}_${capitulo.id}"
+        cachePaginasPorCapitulo[claveCachePaginas]?.let { guardadas ->
+            paginasActuales = guardadas
+            mostrarPaginas(serie, capitulo, guardadas)
+            return
+        }
+
         mostrarPantallaCarga("Cargando páginas...")
 
         val generacion = generacionCatalogo
@@ -1762,6 +1786,15 @@ class MainActivity : Activity() {
                 }
 
                 val paginas = mangaApi.analizarPaginas(objeto)
+                if (paginas.isNotEmpty()) {
+                    cachePaginasPorCapitulo[claveCachePaginas] = paginas
+                    while (cachePaginasPorCapitulo.size > 12) {
+                        val claveAntigua = cachePaginasPorCapitulo.keys
+                            .firstOrNull { it != claveCachePaginas }
+                            ?: break
+                        cachePaginasPorCapitulo.remove(claveAntigua)
+                    }
+                }
 
                 runOnUiThread {
                     if (
