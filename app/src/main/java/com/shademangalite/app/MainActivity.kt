@@ -321,53 +321,67 @@ class MainActivity : Activity() {
         val encabezado = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(14), dp(16), dp(14))
-            setBackgroundColor(Color.rgb(24, 23, 29))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(35, 24, 52), Color.rgb(22, 20, 34))
+            ).apply {
+                cornerRadius = dp(22).toFloat()
+                setStroke(dp(1), Color.rgb(70, 48, 99))
+            }
+            elevation = dp(3).toFloat()
         }
 
-        val insignia = TextView(this).apply {
-            text = "ANIMEXSHADOW"
-            textSize = 11f
-            letterSpacing = 0.08f
-            typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
-            setTextColor(Color.rgb(226, 202, 255))
-            gravity = Gravity.CENTER
-            setPadding(dp(11), dp(7), dp(11), dp(7))
-            background = GradientDrawable().apply {
-                setColor(Color.rgb(47, 31, 72))
-                cornerRadius = dp(8).toFloat()
-            }
+        val filaMarca = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
         }
-        encabezado.addView(
-            insignia,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-        )
+        val insignia = TextView(this).apply {
+            text = "AS"
+            textSize = 13f
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(177, 105, 255), Color.rgb(105, 62, 190))
+            ).apply { cornerRadius = dp(13).toFloat() }
+        }
+        filaMarca.addView(insignia, LinearLayout.LayoutParams(dp(42), dp(42)))
+        val marcaTexto = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(10), 0, 0, 0)
+        }
+        marcaTexto.addView(texto("ANIMEXSHADOW", 12f, true).apply {
+            letterSpacing = 0.09f
+            setTextColor(Color.rgb(222, 205, 255))
+        })
+        marcaTexto.addView(texto(
+            if (mostrandoFavoritos) "Tu colección personal"
+            else if (mostrandoHistorial) "Seguí desde donde quedaste"
+            else if (mostrandoTodos) "Explorá el catálogo"
+            else "Manga, manhwa y manhua",
+            11f, false
+        ).apply { setTextColor(Color.rgb(175, 164, 196)) })
+        filaMarca.addView(marcaTexto, LinearLayout.LayoutParams(0, -2, 1f))
+        encabezado.addView(filaMarca)
 
         encabezado.addView(
             texto(titulo, 25f, true).apply {
                 setTextColor(Color.WHITE)
-                letterSpacing = -0.015f
-                setPadding(0, dp(7), 0, dp(2))
+                letterSpacing = -0.02f
+                setPadding(0, dp(15), 0, dp(3))
             }
         )
-
         encabezado.addView(
             texto(
-                if (mostrandoFavoritos) "Tu colección personal, siempre a mano."
-                else if (mostrandoHistorial) "Retomá donde dejaste la lectura."
+                if (mostrandoFavoritos) "Las historias que guardaste para después."
+                else if (mostrandoHistorial) "Tus lecturas recientes, listas para continuar."
                 else if (mostrandoTodos) "Encontrá tu próxima historia favorita."
-                else "Mundos nuevos. Historias que enganchan.",
-                13f,
-                false
-            ).apply {
-                setTextColor(Color.rgb(190, 183, 208))
-            }
+                else "Descubrí tu próxima obsesión.",
+                13f, false
+            ).apply { setTextColor(Color.rgb(190, 183, 208)) }
         )
-
-        // Encabezado compacto: catálogo al frente, sin banners decorativos.
-
 
         if (conBuscador) {
             buscador = EditText(this).apply {
@@ -1027,24 +1041,11 @@ class MainActivity : Activity() {
             return
         }
 
-        // Inicio organizado como el catálogo web de ShadeManga: populares, novedades y géneros.
-        contenido.addView(texto("Leer manga online gratis en español", 22f, true).apply {
-            setTextColor(Color.WHITE)
-        })
-        espacio(6)
-        contenido.addView(texto(
-            "Explorá manga, manhwa y manhua; encontrá una serie y entrá directo a su ficha.",
-            13f, false
-        ).apply { setTextColor(textoSecundario) })
-        espacio(14)
-
-        val accesos = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        accesos.addView(boton("★ Favoritos") { mostrarPantallaEspecial(true) },
-            LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginEnd = dp(5) })
-        accesos.addView(boton("◷ Historial") { mostrarPantallaEspecial(false) },
-            LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginStart = dp(5) })
-        contenido.addView(accesos)
-        espacio(20)
+        // Inicio estilo streaming: destacado, continuar leyendo y carruseles.
+        lista.firstOrNull()?.let { destacada ->
+            contenido.addView(crearBannerInicio(destacada))
+            espacio(20)
+        }
 
         fun tituloSeccion(titulo: String, detalle: String? = null) {
             val filaTitulo = LinearLayout(this).apply {
@@ -1061,6 +1062,15 @@ class MainActivity : Activity() {
             }
             contenido.addView(filaTitulo)
             espacio(9)
+        }
+
+        val continuarLeyendo = historial.mapNotNull { id ->
+            catalogo.firstOrNull { it.id == id } ?: seriesGuardadas[id]
+        }.distinctBy { it.id }.take(12)
+        if (continuarLeyendo.isNotEmpty()) {
+            tituloSeccion("Seguí leyendo", "Tu historial")
+            agregarCarrusel(continuarLeyendo)
+            espacio(20)
         }
 
         // El orden recibido por el catálogo se conserva; no se inventan puntuaciones.
@@ -1133,6 +1143,71 @@ class MainActivity : Activity() {
                 setTextColor(textoSecundario)
             })
         }
+    }
+
+    private fun crearBannerInicio(serie: Serie): View {
+        val banner = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(15), dp(15), dp(10), dp(15))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(70, 42, 111), Color.rgb(31, 27, 49))
+            ).apply {
+                cornerRadius = dp(22).toFloat()
+                setStroke(dp(1), Color.rgb(116, 76, 163))
+            }
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { mostrarSerie(serie) }
+        }
+
+        val textos = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        textos.addView(texto("RECOMENDADO PARA VOS", 9.5f, true).apply {
+            letterSpacing = 0.08f
+            setTextColor(Color.rgb(220, 197, 255))
+        })
+        textos.addView(texto(serie.titulo, 19f, true).apply {
+            setTextColor(Color.WHITE)
+            maxLines = 3
+            setPadding(0, dp(8), dp(4), dp(5))
+        })
+        textos.addView(texto(
+            "${serie.capitulos} capítulos · ${serie.genero.ifBlank { "Manga" }}",
+            11f, false
+        ).apply {
+            setTextColor(Color.rgb(204, 194, 221))
+            maxLines = 2
+        })
+        val botonVer = TextView(this).apply {
+            text = "Ver ficha  ›"
+            textSize = 12f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            setPadding(dp(12), dp(9), dp(12), dp(9))
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(151, 89, 230))
+                cornerRadius = dp(12).toFloat()
+            }
+            setOnClickListener { mostrarSerie(serie) }
+        }
+        textos.addView(botonVer, LinearLayout.LayoutParams(-2, -2).apply {
+            topMargin = dp(12)
+        })
+        banner.addView(textos, LinearLayout.LayoutParams(0, -2, 1f))
+
+        val portada = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            contentDescription = "Portada de ${serie.titulo}"
+            background = crearFondo(colorPortada, 14)
+            clipToOutline = true
+        }
+        banner.addView(portada, LinearLayout.LayoutParams(dp(100), dp(145)).apply {
+            marginStart = dp(8)
+        })
+        cargarPortada(portada, serie, 145, 12)
+        return banner
     }
 
     private fun crearTarjetaContinuar(serie: Serie): View {
