@@ -2479,9 +2479,17 @@ class MainActivity : Activity() {
     // =====================================================
 
     private fun salirDelLector() {
-        generacionLector++
+        // Cancelar el guardado diferido y guardar el estado final mientras
+        // las referencias todavía apuntan al capítulo que se está cerrando.
+        tareaGuardarProgreso?.let(manejadorProgreso::removeCallbacks)
+        tareaGuardarProgreso = null
         guardarProgreso()
+
+        // Invalidar las tareas de carga/scroll que hayan quedado pendientes.
+        generacionLector++
         lectorActivo = false
+        restauracionVerticalPendiente = false
+        cargandoPaginasVerticales = false
         restaurarPantallaCompleta(false)
 
         val serie = serieLector ?: serieActual
