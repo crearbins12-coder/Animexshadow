@@ -169,53 +169,56 @@ class AnimeCatalogScreen(
 
     private fun agregarEncabezado() {
         val encabezado = LinearLayout(context).apply {
-            orientation = VERTICAL
-            setPadding(dp(20), dp(20), dp(20), dp(18))
-            background = GradientDrawable(
-                GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(Color.rgb(55, 31, 87), Color.rgb(25, 29, 53), Color.rgb(17, 22, 36))
-            ).apply {
-                cornerRadius = dp(24).toFloat()
-                setStroke(dp(1), Color.rgb(111, 73, 153))
-            }
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(18), dp(12), dp(18), dp(12))
+            setBackgroundColor(Color.rgb(8, 8, 13))
         }
-
+        val marca = TextView(context).apply {
+            text = "A✦"
+            textSize = 18f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(159, 72, 255), Color.rgb(79, 44, 166))
+            ).apply { cornerRadius = dp(11).toFloat() }
+        }
+        encabezado.addView(marca, LayoutParams(dp(40), dp(40)))
+        val textos = LinearLayout(context).apply {
+            orientation = VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(10), 0, 0, 0)
+        }
+        textos.addView(TextView(context).apply {
+            text = "ANIME"
+            textSize = 15f
+            letterSpacing = 0.08f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+        })
+        textos.addView(TextView(context).apply {
+            text = "Descubrí tu próxima serie"
+            textSize = 11f
+            setTextColor(Color.rgb(166, 155, 184))
+            setPadding(0, dp(2), 0, 0)
+        })
+        encabezado.addView(textos, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         encabezado.addView(TextView(context).apply {
-            text = "✦  ANIMEXSHADOW  /  ANIME"
+            text = "✦ OTAKU"
             textSize = 10f
-            letterSpacing = 0.14f
+            letterSpacing = 0.06f
             setTypeface(null, Typeface.BOLD)
-            setTextColor(colorAcento)
-        })
-
-        encabezado.addView(TextView(context).apply {
-            text = "Todo el anime que te gusta.\nUna nueva historia te espera."
-            textSize = 30f
-            setLineSpacing(0f, 0.96f)
-            setTypeface(null, Typeface.BOLD)
-            setTextColor(colorTexto)
-            setPadding(0, dp(7), 0, dp(3))
-        })
-
-        encabezado.addView(TextView(context).apply {
-            text = "Descubrí, elegí y seguí viendo."
-            textSize = 13f
-            setTextColor(colorSecundario)
-            setPadding(0, dp(3), 0, 0)
-        })
-
-        addView(
-            encabezado,
-            LayoutParams(
-                LayoutParams.MATCH_PARENT,
-                LayoutParams.WRAP_CONTENT
-            ).apply {
-                leftMargin = dp(12)
-                rightMargin = dp(12)
-                topMargin = dp(10)
-                bottomMargin = dp(12)
+            setTextColor(Color.rgb(188, 139, 255))
+            setPadding(dp(10), dp(7), dp(10), dp(7))
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(27, 20, 40))
+                cornerRadius = dp(12).toFloat()
+                setStroke(dp(1), Color.rgb(76, 49, 105))
             }
-        )
+        })
+        addView(encabezado, LayoutParams(LayoutParams.MATCH_PARENT, dp(64)))
     }
 
     fun mostrarCargando() {
