@@ -30,6 +30,7 @@ import coil.size.Scale
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.Executors
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.abs
@@ -64,7 +65,7 @@ class MainActivity : Activity() {
     private var filtroActual = ""
     private val manejadorBusquedaManga = Handler(Looper.getMainLooper())
     private var busquedaMangaPendiente: Runnable? = null
-    private val cacheBusquedaManga = mutableMapOf<String, List<Serie>>()
+    private val cacheBusquedaManga = ConcurrentHashMap<String, List<Serie>>()
     private var mostrandoTodos = false
     private var resultadosVisibles = 21
 
