@@ -1100,15 +1100,17 @@ class MainActivity : Activity() {
 
     private fun mostrarHistorialAnime() {
         data class EpisodioGuardado(
-            val etiqueta: String,
+            val titulo: String,
             val token: String,
             val numero: Int,
-            val estado: String
+            val estado: String,
+            val porcentaje: Int
         )
 
         val historial = runCatching {
             JSONArray(preferencias.getString("anime_historial", "[]").orEmpty())
         }.getOrElse { JSONArray() }
+        val animesConocidos = (animesDestacadosInicio + obtenerAnimesFavoritos()).distinctBy { it.token }
 
         val elementos = (0 until historial.length()).mapNotNull { i ->
             historial.optJSONObject(i)?.let { item ->
@@ -1131,67 +1133,203 @@ class MainActivity : Activity() {
                     else -> "PENDIENTE"
                 }
                 EpisodioGuardado(
-                    "${item.optString("titulo").ifBlank { "Anime" }} · Ep. ${episodio}\n${if (estado == "EN CURSO") "EN CURSO · $porcentaje%" else estado}",
+                    item.optString("titulo").ifBlank { "Anime" },
                     token,
                     episodio,
-                    estado
+                    estado,
+                    if (estado == "TERMINADO") 100 else porcentaje
                 )
             }
-        }
+        }.distinctBy { "${it.token}_${it.numero}" }
 
-        if (elementos.isEmpty()) {
-            AlertDialog.Builder(this)
-                .setTitle("Mis animes")
-                .setMessage("Todavía no hay episodios en tu historial. Reproducí algún episodio para que aparezca acá.")
-                .setPositiveButton("Aceptar", null)
-                .show()
-            return
+        val raiz = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(12), dp(14), dp(8))
+            setBackgroundColor(fondo)
         }
+        val titulo = TextView(this).apply {
+            text = "Mis animes"
+            textSize = 23f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(textoColor)
+            setPadding(0, 0, 0, dp(4))
+        }
+        raiz.addView(titulo)
+        raiz.addView(TextView(this).apply {
+            text = "Tu progreso y los episodios que estuviste viendo"
+            textSize = 13f
+            setTextColor(textoSecundario)
+        })
+        val filtrosFila = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(12), 0, dp(10))
+        }
+        raiz.addView(filtrosFila)
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            clipToPadding = false
+        }
+        val lista = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        scroll.addView(lista)
+        raiz.addView(scroll, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
+        ))
 
-        val filtros = arrayOf("Todos", "En curso", "Terminados", "Pendientes")
-        AlertDialog.Builder(this)
-            .setTitle("Mis animes · Filtrar")
-            .setItems(filtros) { _, indice ->
-                val estadoFiltro = when (indice) {
-                    1 -> "EN CURSO"
-                    2 -> "TERMINADO"
-                    3 -> "PENDIENTE"
+        val dialogo = AlertDialog.Builder(this)
+            .setView(raiz)
+            .setNegativeButton("Cerrar", null)
+            .setNeutralButton("Limpiar historial", null)
+            .create()
+
+        fun renderizar(filtro: String) {
+            filtrosFila.removeAllViews()
+            lista.removeAllViews()
+            val opciones = listOf("Todos", "En curso", "Terminados", "Pendientes")
+            opciones.forEach { opcion ->
+                val estadoFiltro = when (opcion) {
+                    "En curso" -> "EN CURSO"
+                    "Terminados" -> "TERMINADO"
+                    "Pendientes" -> "PENDIENTE"
                     else -> ""
                 }
-                val filtrados = elementos.filter { estadoFiltro.isBlank() || it.estado == estadoFiltro }
-                val listaBuilder = AlertDialog.Builder(this)
-                    .setTitle("${filtros[indice]} (${filtrados.size})")
-                if (filtrados.isEmpty()) {
-                    listaBuilder.setMessage("No hay episodios en esta categoría todavía.")
-                } else {
-                    listaBuilder.setItems(filtrados.map { it.etiqueta }.toTypedArray()) { _, elegido ->
-                        filtrados.getOrNull(elegido)?.let {
-                            reproducirEpisodioGuardado(it.token, it.numero)
-                        }
+                val botonFiltro = TextView(this).apply {
+                    text = opcion
+                    textSize = 11f
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.WHITE)
+                    setPadding(dp(9), dp(9), dp(9), dp(9))
+                    background = crearFondo(
+                        if (filtro == opcion) acento else Color.rgb(48, 42, 61), 18
+                    )
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener { renderizar(opcion) }
+                }
+                filtrosFila.addView(botonFiltro, LinearLayout.LayoutParams(
+                    0, dp(38), 1f
+                ).apply { setMargins(dp(2), 0, dp(2), 0) })
+            }
+
+            val filtrados = elementos.filter {
+                filtro == "Todos" || when (filtro) {
+                    "En curso" -> it.estado == "EN CURSO"
+                    "Terminados" -> it.estado == "TERMINADO"
+                    else -> it.estado == "PENDIENTE"
+                }
+            }
+            if (filtrados.isEmpty()) {
+                lista.addView(TextView(this).apply {
+                    text = if (elementos.isEmpty()) {
+                        "Todavía no hay episodios guardados. Reproducí un anime y aparecerá acá."
+                    } else {
+                        "No hay episodios en esta categoría todavía."
+                    }
+                    textSize = 14f
+                    setTextColor(textoSecundario)
+                    setPadding(dp(8), dp(24), dp(8), dp(24))
+                    gravity = Gravity.CENTER
+                })
+                return
+            }
+
+            filtrados.forEach { episodio ->
+                val tarjeta = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(9), dp(9), dp(9), dp(9))
+                    background = crearFondo(tarjeta, 14)
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener {
+                        dialogo.dismiss()
+                        reproducirEpisodioGuardado(episodio.token, episodio.numero)
                     }
                 }
-                listaBuilder.setNeutralButton("Limpiar historial") { _, _ ->
-                    AlertDialog.Builder(this)
-                        .setTitle("¿Limpiar el historial?")
-                        .setMessage("Se quitarán los episodios recientes y el acceso rápido de «Seguí mirando». Tus favoritos y episodios marcados como vistos se conservarán.")
-                        .setNegativeButton("Cancelar", null)
-                        .setPositiveButton("Limpiar") { _, _ ->
-                            preferencias.edit()
-                                .putString("anime_historial", "[]")
-                                .remove("anime_ultimo_token")
-                                .remove("anime_ultimo_numero")
-                                .remove("anime_ultimo_siguiente")
-                                .apply()
-                            Toast.makeText(this, "Historial limpiado", Toast.LENGTH_SHORT).show()
-                            mostrarInicio()
-                        }
-                        .show()
+                val portada = ImageView(this).apply {
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    background = crearFondo(Color.rgb(38, 32, 48), 9)
+                    clipToOutline = true
+                    val anime = animesConocidos.firstOrNull { it.token == episodio.token }
+                    if (!anime?.portadaUrl.isNullOrBlank()) load(anime?.portadaUrl)
                 }
-                listaBuilder.setNegativeButton("Volver") { _, _ -> mostrarHistorialAnime() }
-                listaBuilder.show()
+                tarjeta.addView(portada, LinearLayout.LayoutParams(dp(76), dp(100)))
+                val datos = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(dp(11), dp(2), dp(3), dp(2))
+                }
+                datos.addView(TextView(this).apply {
+                    text = episodio.titulo
+                    textSize = 14f
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(textoColor)
+                    maxLines = 2
+                })
+                datos.addView(TextView(this).apply {
+                    text = "Episodio ${episodio.numero}"
+                    textSize = 12f
+                    setTextColor(textoSecundario)
+                    setPadding(0, dp(4), 0, dp(3))
+                })
+                val estadoTexto = when (episodio.estado) {
+                    "EN CURSO" -> "▶ EN CURSO · ${episodio.porcentaje}%"
+                    "TERMINADO" -> "✓ TERMINADO"
+                    else -> "◷ PENDIENTE"
+                }
+                datos.addView(TextView(this).apply {
+                    text = estadoTexto
+                    textSize = 11f
+                    setTextColor(if (episodio.estado == "EN CURSO") acento else textoSecundario)
+                })
+                if (episodio.estado == "EN CURSO") {
+                    val barra = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+                        max = 100
+                        progress = episodio.porcentaje
+                    }
+                    datos.addView(barra, LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, dp(5)
+                    ).apply { topMargin = dp(8) })
+                }
+                datos.addView(TextView(this).apply {
+                    text = if (episodio.estado == "TERMINADO") "Reproducir de nuevo  ↗" else "Continuar episodio  ▶"
+                    textSize = 11f
+                    setTextColor(Color.WHITE)
+                    setPadding(0, dp(7), 0, 0)
+                })
+                tarjeta.addView(datos, LinearLayout.LayoutParams(
+                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
+                ))
+                lista.addView(tarjeta, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { bottomMargin = dp(9) })
             }
-            .setNegativeButton("Cerrar", null)
-            .show()
+        }
+
+        renderizar("Todos")
+        dialogo.setOnShowListener {
+            dialogo.getButton(AlertDialog.BUTTON_NEUTRAL)?.setOnClickListener {
+                AlertDialog.Builder(this)
+                    .setTitle("¿Limpiar el historial?")
+                    .setMessage("Se quitarán los episodios recientes y el acceso rápido de «Seguí mirando». Tus favoritos y episodios marcados como vistos se conservarán.")
+                    .setNegativeButton("Cancelar", null)
+                    .setPositiveButton("Limpiar") { _, _ ->
+                        preferencias.edit()
+                            .putString("anime_historial", "[]")
+                            .remove("anime_ultimo_token")
+                            .remove("anime_ultimo_numero")
+                            .remove("anime_ultimo_siguiente")
+                            .apply()
+                        Toast.makeText(this, "Historial limpiado", Toast.LENGTH_SHORT).show()
+                        dialogo.dismiss()
+                        mostrarInicio()
+                    }
+                    .show()
+            }
+        }
+        dialogo.show()
+        dialogo.window?.setLayout(
+            (resources.displayMetrics.widthPixels * 0.94f).toInt(),
+            (resources.displayMetrics.heightPixels * 0.82f).toInt()
+        )
     }
 
     // =====================================================
