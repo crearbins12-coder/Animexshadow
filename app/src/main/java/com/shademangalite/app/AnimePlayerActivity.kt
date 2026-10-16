@@ -1,6 +1,7 @@
 package com.shademangalite.app
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -80,6 +81,29 @@ class AnimePlayerActivity : Activity() {
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
             Gravity.TOP or Gravity.START
+        ))
+        val botonVlc = TextView(this).apply {
+            text = "Probar VLC"
+            setTextColor(Color.WHITE)
+            setBackgroundColor(0xCC512DA8.toInt())
+            textSize = 14f
+            setPadding(18, 12, 18, 12)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                player?.pause()
+                startActivity(Intent(this@AnimePlayerActivity, VlcPlayerActivity::class.java).apply {
+                    putExtra(EXTRA_URL, intent.getStringExtra(EXTRA_URL).orEmpty())
+                    putExtra(EXTRA_TIPO, intent.getStringExtra(EXTRA_TIPO).orEmpty())
+                    putExtra(EXTRA_TITULO, intent.getStringExtra(EXTRA_TITULO).orEmpty())
+                    putExtra(EXTRA_SERVIDOR, intent.getStringExtra(EXTRA_SERVIDOR).orEmpty())
+                })
+            }
+        }
+        contenedor.addView(botonVlc, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            Gravity.TOP or Gravity.END
         ))
         setContentView(contenedor)
 
