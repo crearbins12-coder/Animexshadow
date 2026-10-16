@@ -2633,10 +2633,29 @@ class MainActivity : Activity() {
                 textSize = 13f; typeface = Typeface.DEFAULT_BOLD; setTextColor(acento)
                 setPadding(dp(2), dp(6), 0, dp(9))
             })
-            if (mangas.isEmpty()) lista.addView(TextView(this).apply {
-                text = "Todavía no hay mangas en «${categoria}»."
-                textSize = 13f; setTextColor(textoSecundario); setPadding(dp(4), dp(4), dp(4), dp(12))
-            })
+            if (mangas.isEmpty()) {
+                lista.addView(TextView(this).apply {
+                    text = "Todavía no hay mangas en «${categoria}»."
+                    textSize = 13f
+                    setTextColor(textoSecundario)
+                    setPadding(dp(4), dp(4), dp(4), dp(8))
+                })
+                lista.addView(TextView(this).apply {
+                    text = "＋  Explorar mangas"
+                    textSize = 12f
+                    typeface = Typeface.DEFAULT_BOLD
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.WHITE)
+                    setPadding(dp(14), dp(11), dp(14), dp(11))
+                    background = crearFondo(acento, 12)
+                    isClickable = true
+                    isFocusable = true
+                    contentDescription = "Explorar catálogo de mangas"
+                    setOnClickListener { abrirTodosLosMangas() }
+                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    setMargins(dp(4), 0, 0, dp(12))
+                })
+            }
             mangas.forEach { serie ->
                 lista.addView(crearTarjetaPerfil(serie.titulo, serie.portadaUrl, "Manga", categoria, serie.id) {
                     mostrarSerie(serie)
@@ -2647,10 +2666,29 @@ class MainActivity : Activity() {
                 textSize = 13f; typeface = Typeface.DEFAULT_BOLD; setTextColor(acento)
                 setPadding(dp(2), dp(12), 0, dp(9))
             })
-            if (animes.isEmpty()) lista.addView(TextView(this).apply {
-                text = "Todavía no hay animes en «${categoria}»."
-                textSize = 13f; setTextColor(textoSecundario); setPadding(dp(4), dp(4), dp(4), dp(12))
-            })
+            if (animes.isEmpty()) {
+                lista.addView(TextView(this).apply {
+                    text = "Todavía no hay animes en «${categoria}»."
+                    textSize = 13f
+                    setTextColor(textoSecundario)
+                    setPadding(dp(4), dp(4), dp(4), dp(8))
+                })
+                lista.addView(TextView(this).apply {
+                    text = "＋  Explorar anime"
+                    textSize = 12f
+                    typeface = Typeface.DEFAULT_BOLD
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.WHITE)
+                    setPadding(dp(14), dp(11), dp(14), dp(11))
+                    background = crearFondo(acento, 12)
+                    isClickable = true
+                    isFocusable = true
+                    contentDescription = "Explorar catálogo de anime"
+                    setOnClickListener { mostrarAnime() }
+                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    setMargins(dp(4), 0, 0, dp(12))
+                })
+            }
             animes.forEach { anime ->
                 lista.addView(crearTarjetaPerfil(anime.titulo, anime.portadaUrl.ifBlank { preferencias.getString("anime_portada_${anime.token}", "").orEmpty() }, "Anime", categoria, anime.token) {
                     mostrarDetalleAnime(anime)
