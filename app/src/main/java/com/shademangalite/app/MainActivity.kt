@@ -756,30 +756,6 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { setMargins(dp(10), 0, dp(10), dp(6)) })
             addView(pantalla, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
-            val botonMiLista = TextView(this@MainActivity).apply {
-                text = if (esAnimeFavorito(anime)) "★  EN MI LISTA" else "＋  AGREGAR A MI LISTA"
-                textSize = 13f
-                typeface = Typeface.DEFAULT_BOLD
-                gravity = Gravity.CENTER
-                setTextColor(Color.WHITE)
-                setPadding(dp(14), dp(12), dp(14), dp(12))
-                background = crearFondo(Color.rgb(45, 31, 63), 12)
-                isClickable = true
-                isFocusable = true
-                setOnClickListener {
-                    val guardado = alternarAnimeFavorito(anime)
-                    text = if (guardado) "★  EN MI LISTA" else "＋  AGREGAR A MI LISTA"
-                    Toast.makeText(
-                        this@MainActivity,
-                        if (guardado) "Agregado a Mi lista" else "Quitado de Mi lista",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }
-            addView(botonMiLista, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { setMargins(dp(16), dp(5), dp(16), dp(8) })
-            )
             addView(NavigationBar(
                 context = this@MainActivity,
                 acento = acento,
@@ -870,6 +846,29 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(fondo)
             addView(pantalla, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+            val botonMiLista = TextView(this@MainActivity).apply {
+                text = if (esAnimeFavorito(anime)) "★  EN MI LISTA" else "＋  AGREGAR A MI LISTA"
+                textSize = 13f
+                typeface = Typeface.DEFAULT_BOLD
+                gravity = Gravity.CENTER
+                setTextColor(Color.WHITE)
+                setPadding(dp(14), dp(12), dp(14), dp(12))
+                background = crearFondo(Color.rgb(45, 31, 63), 12)
+                isClickable = true
+                isFocusable = true
+                setOnClickListener {
+                    val guardado = alternarAnimeFavorito(anime)
+                    text = if (guardado) "★  EN MI LISTA" else "＋  AGREGAR A MI LISTA"
+                    Toast.makeText(
+                        this@MainActivity,
+                        if (guardado) "Agregado a Mi lista" else "Quitado de Mi lista",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+            addView(botonMiLista, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { setMargins(dp(16), dp(5), dp(16), dp(8)) })
             addView(NavigationBar(
                 context = this@MainActivity, acento = acento, textoSecundario = textoSecundario,
                 mostrandoTodos = false, mostrandoFavoritos = false, mostrandoHistorial = false,
