@@ -3,6 +3,15 @@ package com.shademangalite.app
 import android.content.Context
 import android.graphics.Color
 import android.view.View
+import android.view.Gravity
+import android.graphics.drawable.GradientDrawable
+import android.widget.FrameLayout
+import android.widget.ImageView
+import android.widget.TextView
+import coil.load
+import coil.request.CachePolicy
+import coil.size.Precision
+import coil.size.Scale
 import android.widget.LinearLayout
 
 class MangaDetailScreen(
@@ -33,11 +42,63 @@ fun construir(destino: LinearLayout) {
 
     espacioEn(destino, 12)
 
-    destino.addView(
-        crearTexto(serie.titulo, 24f, true)
-    )
+    val hero = FrameLayout(context).apply {
+        background = crearFondo(Color.rgb(30, 23, 43), 18)
+        clipToOutline = true
+        elevation = dp(3)
+    }
+    val portada = ImageView(context).apply {
+        scaleType = ImageView.ScaleType.CENTER_CROP
+        contentDescription = "Portada de ${serie.titulo}"
+        background = crearFondo(Color.rgb(30, 23, 43), 18)
+    }
+    hero.addView(portada, FrameLayout.LayoutParams(
+        FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
+    ))
+    if (serie.portadaUrl.isNotBlank()) {
+        portada.load(serie.portadaUrl) {
+            crossfade(true)
+            memoryCachePolicy(CachePolicy.ENABLED)
+            diskCachePolicy(CachePolicy.ENABLED)
+            precision(Precision.INEXACT)
+            scale(Scale.FILL)
+        }
+    }
+    hero.addView(View(context).apply {
+        background = GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(Color.argb(8, 0, 0, 0), Color.argb(90, 0, 0, 0), Color.argb(238, 0, 0, 0))
+        )
+    }, FrameLayout.LayoutParams(
+        FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
+    ))
+    val heroText = LinearLayout(context).apply {
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.BOTTOM
+        setPadding(dp(17), dp(17), dp(17), dp(17))
+    }
+    heroText.addView(TextView(context).apply {
+        text = "✦  MANGA"
+        textSize = 10f
+        letterSpacing = 0.12f
+        setTextColor(Color.rgb(226, 194, 255))
+        setPadding(dp(9), dp(6), dp(9), dp(6))
+        background = crearFondo(Color.rgb(65, 34, 91), 8)
+    })
+    heroText.addView(crearTexto(serie.titulo, 24f, true).apply {
+        setTextColor(Color.WHITE)
+        maxLines = 3
+        setShadowLayer(6f, 0f, 2f, Color.BLACK)
+        setPadding(0, dp(8), 0, 0)
+    })
+    hero.addView(heroText, FrameLayout.LayoutParams(
+        FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT, Gravity.BOTTOM
+    ))
+    destino.addView(hero, LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.MATCH_PARENT, dp(245)
+    ))
 
-    espacioEn(destino, 6)
+    espacioEn(destino, 8)
 
     destino.addView(
         crearTexto("Autor: ${serie.autor}", 14f, false).apply {
