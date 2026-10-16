@@ -162,9 +162,7 @@ class MainActivity : Activity() {
         generacionCatalogo++
         generacionAnime++
         ejecutor.shutdownNow()
-        controlBusquedaActual?.cancelar()
-        controlBusquedaActual = null
-        tareaBusquedaActual?.cancel(true)
+        cancelarBusquedaManga()
         ejecutorBusqueda.shutdownNow()
         restaurarPantallaCompleta(false)
         super.onDestroy()
@@ -326,6 +324,7 @@ class MainActivity : Activity() {
     // =====================================================
 
     private fun mostrarInicio() {
+        cancelarBusquedaManga()
         generacionAnime++
         mostrandoAnime = false
         mostrandoDetalleAnime = false
@@ -543,6 +542,7 @@ class MainActivity : Activity() {
     // =====================================================
 
     private fun mostrarAnime() {
+        cancelarBusquedaManga()
         generacionAnime++
         mostrandoAnime = true
         mostrandoDetalleAnime = false
@@ -652,6 +652,7 @@ class MainActivity : Activity() {
     }
 
     private fun mostrarDetalleAnime(anime: Anime) {
+        cancelarBusquedaManga()
         generacionAnime++
         mostrandoAnime = true
         mostrandoDetalleAnime = true
@@ -1367,18 +1368,23 @@ class MainActivity : Activity() {
             .show()
     }
 
+    private fun cancelarBusquedaManga() {
+        busquedaMangaPendiente?.let(manejadorBusquedaManga::removeCallbacks)
+        busquedaMangaPendiente = null
+        controlBusquedaActual?.cancelar()
+        controlBusquedaActual = null
+        tareaBusquedaActual?.cancel(true)
+        tareaBusquedaActual = null
+        ejecutorBusqueda.purge()
+    }
+
     private fun buscarEnTodoElCatalogo(consultaOriginal: String) {
         val consulta = consultaOriginal.trim()
         if (consulta.length < 2 || mostrandoAnime || mostrandoDetalleAnime) return
 
         val generacion = generacionCatalogo
-        // Cancelar y retirar búsquedas anteriores que todavía estén en cola.
-        // Así una consulta vieja no retrasa la consulta más reciente.
-        controlBusquedaActual?.cancelar()
-        controlBusquedaActual = null
-        tareaBusquedaActual?.cancel(true)
-        ejecutorBusqueda.purge()
-        tareaBusquedaActual = null
+        // Liberar cuanto antes la petición y el trabajo pendiente de la consulta anterior.
+        cancelarBusquedaManga()
 
         // Los resultados locales permanecen visibles mientras responde el servidor.
         // Si ya buscamos este texto, reutilizamos la respuesta y evitamos otra petición.
@@ -1644,6 +1650,7 @@ class MainActivity : Activity() {
     // =====================================================
 
     private fun mostrarSerie(serie: Serie) {
+        cancelarBusquedaManga()
         serieActual = serie
         mostrarPantallaCarga("Cargando capítulos...")
 
