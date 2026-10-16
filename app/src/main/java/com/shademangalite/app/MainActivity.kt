@@ -1283,6 +1283,55 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun agregarCarruselHeroAnime(animes: List<Anime>) {
+        if (animes.isEmpty()) return
+
+        val anchoBanner = (resources.displayMetrics.widthPixels / resources.displayMetrics.density).toInt() - 36
+        val horizontal = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            clipToPadding = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+            setPadding(0, dp(2), 0, dp(4))
+        }
+        val fila = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+
+        animes.forEach { anime ->
+            val banner = crearHeroAnime(anime)
+            fila.addView(
+                banner,
+                LinearLayout.LayoutParams(dp(max(280, anchoBanner)), dp(350)).apply {
+                    marginEnd = dp(12)
+                }
+            )
+        }
+
+        horizontal.addView(
+            fila,
+            HorizontalScrollView.LayoutParams(
+                HorizontalScrollView.LayoutParams.WRAP_CONTENT,
+                HorizontalScrollView.LayoutParams.WRAP_CONTENT
+            )
+        )
+        contenido.addView(
+            horizontal,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(360)
+            )
+        )
+
+        if (animes.size > 1) {
+            contenido.addView(texto("DESLIZÁ PARA VER MÁS  •  ${animes.size} DESTACADOS", 10f, true).apply {
+                setTextColor(Color.rgb(145, 132, 166))
+                letterSpacing = 0.06f
+                gravity = Gravity.END
+                setPadding(0, dp(4), dp(2), 0)
+            })
+        }
+    }
+
     private fun crearHeroAnime(anime: Anime): View {
         val hero = FrameLayout(this).apply {
             background = crearFondo(Color.rgb(30, 22, 45), 22)
@@ -1506,10 +1555,16 @@ class MainActivity : Activity() {
             espacio(9)
         }
 
-        // Portada principal: datos reales de la API, sin inventar títulos ni puntuaciones.
+        // Escaparate horizontal con varios destacados reales de la API.
+        // Cada banner ocupa casi todo el ancho para permitir descubrir más de un título
+        // sin convertir el inicio en una cuadrícula tradicional.
         if (animesDestacadosInicio.isNotEmpty()) {
-            contenido.addView(crearHeroAnime(animesDestacadosInicio.first()),
-                LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(350)))
+            contenido.addView(texto("DESCUBRÍ TU PRÓXIMO ANIME", 11f, true).apply {
+                setTextColor(Color.rgb(190, 145, 255))
+                letterSpacing = 0.14f
+                setPadding(dp(2), dp(2), 0, dp(9))
+            })
+            agregarCarruselHeroAnime(animesDestacadosInicio.take(5))
             espacio(20)
 
             val ultimoTokenAnime = preferencias.getString("anime_ultimo_token", "").orEmpty()
