@@ -1294,65 +1294,85 @@ class MainActivity : Activity() {
 
     private fun buscarEnTodoElCatalogo(consultaOriginal: String) {
         val consulta = consultaOriginal.trim()
-        if (consulta.length < 2) {
-            mostrarAviso("Escribí al menos 2 letras para buscar en todo el catálogo.")
-            return
-        }
+        if (consulta.length < 2 || mostrandoAnime || mostrandoDetalleAnime) return
 
+        val generacion = generacionCatalogo
         val dialogo = AlertDialog.Builder(this)
-            .setMessage("Buscando «$consulta» en todo el catálogo…")
+            .setMessage("Buscando «$consulta»…")
             .setCancelable(true)
             .create()
         dialogo.show()
 
-        val generacion = generacionCatalogo
         ejecutor.execute {
             try {
+                fun coincide(serie: Serie): Boolean =
+                    serie.titulo.contains(consulta, ignoreCase = true) ||
+                        serie.autor.contains(consulta, ignoreCase = true) ||
+                        serie.genero.contains(consulta, ignoreCase = true)
+
+                // Primero usamos el mismo patrón de búsqueda del catálogo de anime:
+                // enviar el texto al servidor con q= y recibir resultados paginados.
+                val rutaBusqueda =
+                    "/api/series-locales?pageSize=$tamanoPaginaCatalogo&page=1&q=${Uri.encode(consulta)}"
+                val respuestaBusqueda = runCatching {
+                    JSONArray(consultarApi(rutaBusqueda))
+                }.getOrNull()
+                val resultadosServidor = respuestaBusqueda
+                    ?.let { analizarSeries(it) }
+                    .orEmpty()
+                    .filter(::coincide)
+
+                // Si el endpoint ignora q, devuelve una página completa sin filtrar.
+                // En ese caso usamos el recorrido paginado anterior como respaldo.
+                val endpointPareceBuscar =
+                    respuestaBusqueda != null &&
+                        (respuestaBusqueda.length() < tamanoPaginaCatalogo ||
+                            respuestaBusqueda.length() == 0) &&
+                        (respuestaBusqueda.length() == 0 ||
+                            analizarSeries(respuestaBusqueda).all(::coincide))
+
                 val encontrados = linkedMapOf<String, Serie>()
-                var pagina = 1
-                var continuar = true
-
-                while (continuar && pagina <= 200) {
-                    val respuesta = consultarApi(
-                        "/api/series-locales?pageSize=$tamanoPaginaCatalogo&page=$pagina"
-                    )
-                    val array = JSONArray(respuesta)
-                    val seriesPagina = analizarSeries(array)
-
-                    for (serie in seriesPagina) {
-                        if (
-                            serie.titulo.contains(consulta, ignoreCase = true) ||
-                            serie.autor.contains(consulta, ignoreCase = true) ||
-                            serie.genero.contains(consulta, ignoreCase = true)
-                        ) {
-                            encontrados[serie.id] = serie
+                if (endpointPareceBuscar && resultadosServidor.isNotEmpty()) {
+                    resultadosServidor.forEach { encontrados[it.id] = it }
+                } else {
+                    var pagina = 1
+                    var continuar = true
+                    while (continuar && pagina <= 200) {
+                        val respuesta = consultarApi(
+                            "/api/series-locales?pageSize=$tamanoPaginaCatalogo&page=$pagina"
+                        )
+                        val array = JSONArray(respuesta)
+                        val seriesPagina = analizarSeries(array)
+                        seriesPagina.filter(::coincide).forEach {
+                            encontrados[it.id] = it
                         }
+                        continuar = array.length() >= tamanoPaginaCatalogo
+                        pagina++
                     }
-
-                    continuar = array.length() >= tamanoPaginaCatalogo
-                    pagina++
                 }
 
                 runOnUiThread {
                     dialogo.dismiss()
-                    if (isFinishing || isDestroyed || generacion != generacionCatalogo) return@runOnUiThread
+                    if (isFinishing || isDestroyed || generacion != generacionCatalogo ||
+                        consulta != filtroActual.trim() || mostrandoAnime || mostrandoDetalleAnime
+                    ) return@runOnUiThread
 
-                    for (serie in encontrados.values) {
+                    encontrados.values.forEach { serie ->
                         if (idsCatalogo.add(serie.id)) catalogo.add(serie)
                     }
-
-                    filtroActual = consulta
                     resultadosVisibles = max(resultadosVisibles, encontrados.size)
                     mostrarCatalogoFiltrado()
 
                     if (encontrados.isEmpty()) {
-                        mostrarAviso("No se encontró «$consulta» en las primeras 200 páginas del catálogo.")
+                        mostrarAviso("No se encontró «$consulta» en el catálogo disponible.")
                     }
                 }
             } catch (e: Exception) {
                 runOnUiThread {
                     dialogo.dismiss()
-                    if (isFinishing || isDestroyed || generacion != generacionCatalogo) return@runOnUiThread
+                    if (isFinishing || isDestroyed || generacion != generacionCatalogo ||
+                        consulta != filtroActual.trim()
+                    ) return@runOnUiThread
                     mostrarAviso("No se pudo completar la búsqueda. ${e.message ?: "Error desconocido"}")
                 }
             }
