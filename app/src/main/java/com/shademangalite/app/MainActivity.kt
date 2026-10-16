@@ -1477,57 +1477,104 @@ class MainActivity : Activity() {
             return
         }
 
-        // Inicio organizado como el catálogo web de ShadeManga: populares, novedades y géneros.
-        contenido.addView(texto("Tu universo otaku, en un solo lugar", 22f, true).apply {
-            setTextColor(Color.WHITE)
-        })
-        espacio(6)
-        contenido.addView(texto(
-            "Descubrí anime para maratonear y manga para seguir la historia.",
-            13f, false
-        ).apply { setTextColor(textoSecundario) })
-        espacio(14)
-
-        val accesos = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        accesos.addView(boton("★ Favoritos") { mostrarPantallaEspecial(true) },
-            LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginEnd = dp(5) })
-        accesos.addView(boton("◷ Historial") { mostrarPantallaEspecial(false) },
-            LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginStart = dp(5) })
-        contenido.addView(accesos)
-        espacio(20)
-
+        // Inicio con jerarquía de streaming: portada protagonista y filas horizontales.
         fun tituloSeccion(titulo: String, detalle: String? = null) {
             val filaTitulo = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
             }
-            filaTitulo.addView(texto(titulo, 20f, true).apply {
+            filaTitulo.addView(texto(titulo, 19f, true).apply {
                 setTextColor(Color.WHITE)
             }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
             if (!detalle.isNullOrBlank()) {
-                filaTitulo.addView(texto(detalle, 12f, false).apply {
-                    setTextColor(textoSecundario)
+                filaTitulo.addView(texto(detalle, 12f, true).apply {
+                    setTextColor(Color.rgb(183, 140, 246))
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener {
+                        if (titulo.contains("Anime", ignoreCase = true)) mostrarAnime()
+                        else abrirTodosLosMangas()
+                    }
                 })
             }
             contenido.addView(filaTitulo)
             espacio(9)
         }
 
-        // Portada destacada y carrusel real de anime, con imágenes de la API.
+        // Portada principal: datos reales de la API, sin inventar títulos ni puntuaciones.
         if (animesDestacadosInicio.isNotEmpty()) {
-            contenido.addView(crearHeroAnime(animesDestacadosInicio.first()))
-            espacio(18)
+            contenido.addView(crearHeroAnime(animesDestacadosInicio.first()),
+                LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(350)))
+            espacio(20)
+
+            val ultimoTokenAnime = preferencias.getString("anime_ultimo_token", "").orEmpty()
+            val ultimoNumeroAnime = preferencias.getInt("anime_ultimo_numero", 0)
+            if (ultimoTokenAnime.isNotBlank() && ultimoNumeroAnime > 0) {
+                tituloSeccion("Seguí mirando")
+                val continuar = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    background = crearFondo(Color.rgb(25, 21, 35), 15).apply {
+                        setStroke(dp(1), Color.rgb(74, 51, 102))
+                    }
+                    setPadding(dp(13), dp(11), dp(13), dp(11))
+                }
+                val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+                info.addView(texto("ANIME", 10f, true).apply {
+                    setTextColor(Color.rgb(185, 130, 255))
+                    letterSpacing = 0.12f
+                })
+                info.addView(texto("Episodio $ultimoNumeroAnime", 15f, true).apply {
+                    setTextColor(Color.WHITE)
+                    setPadding(0, dp(3), 0, 0)
+                })
+                continuar.addView(info, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                continuar.addView(TextView(this).apply {
+                    text = "▶ CONTINUAR"
+                    textSize = 11f
+                    typeface = Typeface.DEFAULT_BOLD
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.WHITE)
+                    setPadding(dp(12), dp(10), dp(12), dp(10))
+                    background = crearFondo(acento, 10)
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener { reproducirEpisodioGuardado(ultimoTokenAnime, ultimoNumeroAnime) }
+                })
+                contenido.addView(continuar, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                ))
+                espacio(20)
+            }
+
             tituloSeccion("Anime para maratonear", "Ver todos  ›")
             agregarCarruselAnime(animesDestacadosInicio)
-            espacio(22)
+            espacio(24)
         } else {
-            contenido.addView(
-                texto("✦  ANIME Y MANGA, A TU MANERA", 12f, true).apply {
-                    setTextColor(acento)
-                    letterSpacing = 0.08f
-                }
-            )
-            espacio(14)
+            val heroAlternativo = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.BOTTOM
+                setPadding(dp(20), dp(22), dp(20), dp(20))
+                background = GradientDrawable(
+                    GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(Color.rgb(74, 31, 112), Color.rgb(29, 23, 47), Color.rgb(11, 11, 17))
+                ).apply { cornerRadius = dp(22).toFloat() }
+            }
+            heroAlternativo.addView(texto("ANIMEXSHADOW ORIGINAL", 10f, true).apply {
+                setTextColor(Color.rgb(226, 194, 255))
+                letterSpacing = 0.15f
+            })
+            heroAlternativo.addView(texto("Tu próxima historia\nte está esperando.", 25f, true).apply {
+                setTextColor(Color.WHITE)
+                setPadding(0, dp(8), 0, dp(5))
+            })
+            heroAlternativo.addView(texto("Explorá miles de mundos de anime y manga.", 13f, false).apply {
+                setTextColor(Color.rgb(205, 194, 219))
+            })
+            contenido.addView(heroAlternativo, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(270)
+            ))
+            espacio(20)
         }
 
         // El orden recibido por el catálogo se conserva; no se inventan puntuaciones.
