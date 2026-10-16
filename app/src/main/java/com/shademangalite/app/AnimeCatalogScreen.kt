@@ -28,7 +28,9 @@ class AnimeCatalogScreen(
     private val colorSecundario: Int = Color.LTGRAY,
     private val onFiltrar: (String, String, String, String) -> Unit,
     private val onCargarMas: () -> Unit,
-    private val onSeleccionarAnime: (Anime) -> Unit
+    private val onSeleccionarAnime: (Anime) -> Unit,
+    private val esFavorito: (Anime) -> Boolean,
+    private val onAlternarFavorito: (Anime) -> Boolean
 ) : LinearLayout(context) {
 
     private val dp: (Int) -> Int = {
@@ -504,8 +506,46 @@ class AnimeCatalogScreen(
             setBackgroundColor(Color.rgb(45, 38, 55))
         }
 
-        tarjeta.addView(
+        val marcoPortada = FrameLayout(context).apply {
+            clipToOutline = true
+            background = fondoRedondeado(colorTarjeta, 8)
+        }
+        marcoPortada.addView(
             portada,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                dp(184)
+            )
+        )
+
+        val botonFavorito = TextView(context).apply {
+            text = if (esFavorito(anime)) "★" else "＋"
+            textSize = 21f
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            contentDescription = if (esFavorito(anime)) "Quitar ${anime.titulo} de Mi lista" else "Agregar ${anime.titulo} a Mi lista"
+            background = GradientDrawable().apply {
+                setColor(Color.argb(220, 31, 22, 45))
+                cornerRadius = dp(22).toFloat()
+                setStroke(dp(1), Color.rgb(150, 105, 205))
+            }
+            isClickable = true
+            isFocusable = true
+            elevation = dp(4).toFloat()
+            setOnClickListener {
+                val guardado = onAlternarFavorito(anime)
+                text = if (guardado) "★" else "＋"
+                contentDescription = if (guardado) "Quitar ${anime.titulo} de Mi lista" else "Agregar ${anime.titulo} a Mi lista"
+            }
+        }
+        marcoPortada.addView(
+            botonFavorito,
+            FrameLayout.LayoutParams(dp(38), dp(38), Gravity.TOP or Gravity.END).apply {
+                setMargins(0, dp(7), dp(7), 0)
+            }
+        )
+        tarjeta.addView(
+            marcoPortada,
             LayoutParams(
                 LayoutParams.MATCH_PARENT,
                 dp(184)
