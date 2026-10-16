@@ -2587,6 +2587,13 @@ class MainActivity : Activity() {
             setTextColor(textoSecundario)
             setPadding(0, dp(3), 0, dp(14))
         })
+        val resumenPerfil = TextView(this).apply {
+            textSize = 12f
+            setTextColor(textoSecundario)
+            setPadding(dp(2), 0, dp(2), dp(10))
+            contentDescription = "Resumen de tu biblioteca"
+        }
+        raizPerfil.addView(resumenPerfil)
         val categorias = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         raizPerfil.addView(categorias)
         val scroll = ScrollView(this).apply { isFillViewport = true; clipToPadding = false }
@@ -2600,6 +2607,10 @@ class MainActivity : Activity() {
             val cantidadesPerfil = listOf("Me gusta", "Viendo", "Ver más tarde").associateWith { cat ->
                 obtenerMangasEstado(cat).size + obtenerAnimesEstado(cat).size
             }
+            val totalMangas = obtenerMangasEstado("Me gusta").size + obtenerMangasEstado("Viendo").size + obtenerMangasEstado("Ver más tarde").size
+            val totalAnimes = obtenerAnimesEstado("Me gusta").size + obtenerAnimesEstado("Viendo").size + obtenerAnimesEstado("Ver más tarde").size
+            val totalObras = totalMangas + totalAnimes
+            resumenPerfil.text = "$totalObras obras guardadas  ·  $totalMangas mangas  ·  $totalAnimes animes"
             listOf("Me gusta", "Viendo", "Ver más tarde").forEach { cat ->
                 val boton = TextView(this).apply {
                     val simbolo = when (cat) { "Me gusta" -> "♥"; "Viendo" -> "◉"; else -> "◷" }
