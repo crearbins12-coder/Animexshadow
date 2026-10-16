@@ -164,8 +164,7 @@ class MainActivity : Activity() {
     }
 
     private fun esAnimeFavorito(anime: Anime): Boolean =
-        obtenerAnimesEstado("Me gusta").any { it.token == anime.token } ||
-            obtenerAnimesFavoritos().any { it.token == anime.token }
+        obtenerAnimesEstado("Me gusta").any { it.token == anime.token }
 
     private fun alternarAnimeFavorito(anime: Anime): Boolean {
         val yaGuardado = esAnimeFavorito(anime)
@@ -3185,6 +3184,10 @@ class MainActivity : Activity() {
             },
             alAlternarFavorito = {
                 alternarFavorito(serie)
+                mostrarListaCapitulos(serie, capitulos)
+            },
+            alCambiarCategoria = { categoria ->
+                guardarEstadoManga(serie, categoria)
                 mostrarListaCapitulos(serie, capitulos)
             },
             alAbrirCapitulo = { capitulo ->
