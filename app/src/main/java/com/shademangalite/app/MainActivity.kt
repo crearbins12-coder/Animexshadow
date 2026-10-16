@@ -24,6 +24,8 @@ import android.widget.TextView
 import android.text.TextWatcher
 import android.text.Editable
 import coil.load
+import coil.imageLoader
+import coil.request.ImageRequest
 import coil.request.CachePolicy
 import coil.size.Precision
 import coil.size.Scale
@@ -2385,12 +2387,38 @@ class MainActivity : Activity() {
             scale(Scale.FIT)
         }
 
+        // Deja la página siguiente en caché mientras el usuario lee la actual.
+        precargarPaginaSiguiente(paginas)
+
         actualizarTextoProgreso(paginas.size)
 
         botonAnterior?.isEnabled = paginaActual > 0
         botonSiguiente?.isEnabled = paginaActual < paginas.lastIndex
 
         guardarProgreso()
+    }
+
+    /**
+     * Precarga solamente la página siguiente para reducir la espera al avanzar
+     * sin llenar la memoria con demasiadas imágenes en dispositivos modestos.
+     */
+    private fun precargarPaginaSiguiente(paginas: List<String>) {
+        val indiceSiguiente = paginaActual + 1
+        val url = paginas.getOrNull(indiceSiguiente) ?: return
+
+        val solicitud = ImageRequest.Builder(this)
+            .data(url)
+            .memoryCachePolicy(CachePolicy.ENABLED)
+            .diskCachePolicy(CachePolicy.ENABLED)
+            .precision(Precision.INEXACT)
+            .scale(Scale.FIT)
+            .size(
+                resources.displayMetrics.widthPixels.coerceAtLeast(1),
+                resources.displayMetrics.heightPixels.coerceAtLeast(1)
+            )
+            .build()
+
+        imageLoader.enqueue(solicitud)
     }
 
     private fun avanzarPagina(paginas: List<String>) {
