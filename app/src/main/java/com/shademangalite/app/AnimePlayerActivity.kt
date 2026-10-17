@@ -1,6 +1,7 @@
 package com.shademangalite.app
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
@@ -40,6 +41,7 @@ class AnimePlayerActivity : Activity() {
     }
 
     private var player: ExoPlayer? = null
+    private var dialogoErrorReproduccion: AlertDialog? = null
     private var tokenAnime = ""
     private var numeroEpisodio = 0
     private var siguienteEpisodio = 0
@@ -158,11 +160,41 @@ class AnimePlayerActivity : Activity() {
 
         exo.addListener(object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
-                Toast.makeText(
-                    this@AnimePlayerActivity,
-                    "No se pudo reproducir el video: " + (error.localizedMessage ?: "error de lectura"),
-                    Toast.LENGTH_LONG
-                ).show()
+                if (isFinishing || isDestroyed || dialogoErrorReproduccion?.isShowing == true) return
+
+                val mensaje = error.localizedMessage
+                    ?.takeIf { it.isNotBlank() }
+                    ?: "El servidor no pudo entregar el video."
+
+                val dialogo = AlertDialog.Builder(this@AnimePlayerActivity)
+                    .setTitle("Problema de reproducción")
+                    .setMessage(
+                        "$mensaje\n\nPodés volver a elegir el servidor o cerrar el reproductor."
+                    )
+                    .setPositiveButton("Elegir otro servidor") { _, _ ->
+                        guardarProgreso()
+                        player?.pause()
+
+                        if (tokenAnime.isNotBlank() && numeroEpisodio > 0) {
+                            val volver = Intent(this@AnimePlayerActivity, MainActivity::class.java).apply {
+                                putExtra("abrir_siguiente_token", tokenAnime)
+                                putExtra("abrir_siguiente_numero", numeroEpisodio)
+                                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                            }
+                            startActivity(volver)
+                        }
+                        finish()
+                    }
+                    .setNegativeButton("Cerrar") { _, _ -> finish() }
+                    .create()
+
+                dialogoErrorReproduccion = dialogo
+                dialogo.setOnDismissListener {
+                    if (dialogoErrorReproduccion === dialogo) {
+                        dialogoErrorReproduccion = null
+                    }
+                }
+                dialogo.show()
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
